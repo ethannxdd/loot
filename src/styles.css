@@ -1,0 +1,378 @@
+@import url('https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600;1,700&display=swap');
+@import "tailwindcss";
+
+/* ==========================================================================
+   Loot Design System
+   Single source of truth for tokens — see LOOT-DESIGN-SYSTEM.md.
+   Nothing in components should hardcode a colour, radius, or timing that
+   already has a token here.
+   ========================================================================== */
+
+@theme {
+  /* Base */
+  --color-background: #0f0a0a;
+  --color-foreground: #ffffff;
+  --color-surface: #171212;
+  --color-surface-2: #211b1b;
+  --color-surface-3: #2c2424;
+
+  /* Brand */
+  --color-primary: #c1fe72;
+  --color-primary-foreground: #0f0a0a;
+  --color-secondary: #af72fe;
+  --color-secondary-foreground: #0f0a0a;
+
+  /* Semantic */
+  --color-accent: #c1fe72;
+  --color-accent-foreground: #0f0a0a;
+  --color-positive: #c1fe72;
+  --color-caution: #f0c040;
+  --color-caution-foreground: #0f0a0a;
+  --color-alert: #ff5c5c;
+  --color-destructive: #ff5c5c;
+  --color-destructive-foreground: #ffffff;
+
+  /* Text */
+  --color-muted-foreground: rgba(255, 255, 255, 0.5);
+  --color-text-muted: #aaa3a3;
+  --color-text-subtle: #756f6f;
+
+  /* Structure */
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-hairline: rgba(255, 255, 255, 0.06);
+  --color-input: rgba(255, 255, 255, 0.05);
+  --color-ring: #c1fe72;
+
+  /* Chart colours */
+  --color-chart-1: #af72fe;
+  --color-chart-2: #c1fe72;
+  --color-chart-3: #5bc0eb;
+  --color-chart-4: #f0a857;
+  --color-chart-5: #ff7f7f;
+
+  /* Radius */
+  --radius-card: 1rem; /* 16px */
+  --radius-pill: 999px;
+
+  /* Fonts */
+  --font-sans: 'Cabin', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Cabin', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Cabin', ui-sans-serif, system-ui, sans-serif;
+
+  /* Easing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-in-out-loot: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+html {
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100dvh;
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 1.5px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-card);
+}
+
+/* Tabular numerals for every financial figure */
+.tnum,
+.financial-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.overline {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==========================================================================
+   Loot signature gradient — the app's defining visual identity.
+   Applied to the main content area behind every authenticated page.
+   ========================================================================== */
+
+.loot-gradient {
+  background-image: linear-gradient(
+    135deg,
+    #5bc0eb 0%,
+    #7dd9c5 16%,
+    #c1fe72 40%,
+    #af72fe 70%,
+    #8b5cf6 100%
+  );
+  background-attachment: fixed;
+}
+
+@media (max-width: 767px) {
+  .loot-gradient {
+    /* fixed attachment is unreliable on mobile Safari; scroll instead */
+    background-attachment: scroll;
+  }
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+}
+
+.card-elevated {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 52px -34px rgba(0, 0, 0, 0.95);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-hover {
+    transition:
+      transform 240ms var(--ease-out-expo),
+      border-color 240ms var(--ease-out-expo);
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(193, 254, 114, 0.28);
+  }
+}
+
+.card-gradient {
+  background-image: linear-gradient(135deg, #5bc0eb, #af72fe);
+  border-radius: var(--radius-card);
+}
+
+.card-purple {
+  background: rgba(175, 114, 254, 0.14);
+  border: 1px solid rgba(175, 114, 254, 0.28);
+  border-radius: var(--radius-card);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 18px;
+  min-height: 44px;
+  transition: filter 150ms var(--ease-out-expo);
+  white-space: nowrap;
+}
+
+.btn:not([disabled]):active,
+a.btn:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border-radius: var(--radius-pill);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not([disabled]) {
+    filter: brightness(1.08);
+  }
+}
+
+.btn-secondary {
+  background: var(--color-secondary);
+  color: var(--color-secondary-foreground);
+  border-radius: var(--radius-pill);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover:not([disabled]) {
+    filter: brightness(1.08);
+  }
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border);
+  color: rgba(255, 255, 255, 0.75);
+  border-radius: 10px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover:not([disabled]) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(193, 254, 114, 0.25);
+  }
+}
+
+.btn-destructive {
+  background: rgba(255, 92, 92, 0.12);
+  color: var(--color-alert);
+  border: 1px solid rgba(255, 92, 92, 0.28);
+  border-radius: 10px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-destructive:hover:not([disabled]) {
+    background: rgba(255, 92, 92, 0.18);
+  }
+}
+
+/* ==========================================================================
+   Form fields
+   ========================================================================== */
+
+input,
+select,
+textarea {
+  width: 100%;
+  background: var(--color-input);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-size: max(16px, 1em);
+  transition:
+    border-color 150ms var(--ease-out-expo),
+    box-shadow 150ms var(--ease-out-expo);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(193, 254, 114, 0.5);
+  box-shadow: 0 0 0 3px rgba(193, 254, 114, 0.12);
+  outline: none;
+}
+
+label.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   Skeleton loading
+   ========================================================================== */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: skeleton-sweep 1.8s var(--ease-out-expo) infinite;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+
+/* ==========================================================================
+   Page / element entry motion
+   ========================================================================== */
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-enter {
+  animation: slide-up 350ms var(--ease-out-expo) both;
+}
+
+.stagger-1 {
+  animation-delay: 40ms;
+}
+.stagger-2 {
+  animation-delay: 80ms;
+}
+.stagger-3 {
+  animation-delay: 120ms;
+}
+.stagger-4 {
+  animation-delay: 160ms;
+}
+.stagger-5 {
+  animation-delay: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter,
+  .animate-pop,
+  [data-motion] {
+    animation: opacity-only 200ms ease both !important;
+  }
+  @keyframes opacity-only {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .skeleton::after {
+    animation: none;
+  }
+}

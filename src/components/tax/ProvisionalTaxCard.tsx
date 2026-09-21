@@ -1,0 +1,26 @@
+import { CalendarClock } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
+import type { ProvisionalEstimate } from '@/lib/tax/tax-math'
+
+export function ProvisionalTaxCard({ estimates }: { estimates: ProvisionalEstimate[] }) {
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center gap-2">
+        <CalendarClock size={18} strokeWidth={1.75} className="text-secondary" />
+        <h3 className="text-base font-bold">Provisional tax</h3>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {estimates.map((e) => (
+          <div key={e.periodLabel} className="rounded-xl bg-surface-2 p-3.5">
+            <p className="overline">{e.periodLabel}</p>
+            <p className="tnum mt-1 text-lg">{formatCurrency(e.amountDue)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Due {new Date(e.dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })} ·{' '}
+              {e.daysUntilDue >= 0 ? `${e.daysUntilDue} days away` : `${Math.abs(e.daysUntilDue)} days overdue`}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
