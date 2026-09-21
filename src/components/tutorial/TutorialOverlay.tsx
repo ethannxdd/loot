@@ -4,6 +4,12 @@ import { useTutorialContext } from '@/context/TutorialContext'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { TUTORIAL_STEPS } from '@/lib/tutorial-steps'
 
+/** First element matching the selector that is actually on screen (the desktop sidebar is display:none on phones). */
+function findVisible(selector: string): HTMLElement | null {
+  const matches = Array.from(document.querySelectorAll<HTMLElement>(selector))
+  return matches.find((el) => el.getClientRects().length > 0) ?? null
+}
+
 const SPOTLIGHT_PADDING = 10
 const CARD_WIDTH = 320
 const VIEWPORT_MARGIN = 16
@@ -24,6 +30,19 @@ export function TutorialOverlay() {
 
   useEffect(() => {
     if (!active) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        close()
+        updateProfile.mutate({ tutorial_completed: true })
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active])
+
+  useEffect(() => {
+    if (!active) return
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = ''
@@ -40,8 +59,10 @@ export function TutorialOverlay() {
     let attempts = 0
 
     function tryMeasure() {
-      const el = document.querySelector(step!.selector!) as HTMLElement | null
+      const el = findVisible(step!.selector!)
       if (el) {
+        // Bring the target into view first (on phones it can be well below the fold).
+        el.scrollIntoView?.({ block: 'center', behavior: 'instant' as ScrollBehavior })
         setRect(el.getBoundingClientRect())
         return
       }
@@ -51,7 +72,7 @@ export function TutorialOverlay() {
     tryMeasure()
 
     function onViewportChange() {
-      const el = document.querySelector(step!.selector!) as HTMLElement | null
+      const el = findVisible(step!.selector!)
       if (el) setRect(el.getBoundingClientRect())
     }
     window.addEventListener('resize', onViewportChange)
@@ -86,13 +107,26 @@ export function TutorialOverlay() {
 
   const hasSpotlight = Boolean(step.selector && rect)
 
-  const spotlightStyle: CSSProperties = hasSpotlight
+  // A target taller than the screen (or partly scrolled off it) is spotlighted only where it's actually visible,
+  // so the hole and the tooltip always sit on screen.
+  const viewportW = window.innerWidth
+  const viewportH = window.innerHeight
+  const visible = rect
+    ? {
+        top: Math.max(rect.top, 0),
+        left: Math.max(rect.left, 0),
+        bottom: Math.min(rect.bottom, viewportH),
+        right: Math.min(rect.right, viewportW),
+      }
+    : null
+
+  const spotlightStyle: CSSProperties = hasSpotlight && visible
     ? {
         position: 'fixed',
-        top: rect!.top - SPOTLIGHT_PADDING,
-        left: rect!.left - SPOTLIGHT_PADDING,
-        width: rect!.width + SPOTLIGHT_PADDING * 2,
-        height: rect!.height + SPOTLIGHT_PADDING * 2,
+        top: visible.top - SPOTLIGHT_PADDING,
+        left: visible.left - SPOTLIGHT_PADDING,
+        width: visible.right - visible.left + SPOTLIGHT_PADDING * 2,
+        height: visible.bottom - visible.top + SPOTLIGHT_PADDING * 2,
         borderRadius: 14,
         border: '2px solid #C1FE72',
         boxShadow: '0 0 0 9999px rgba(15,10,10,0.86)',
@@ -110,39 +144,44 @@ export function TutorialOverlay() {
       }
 
   let tooltipStyle: CSSProperties
-  if (hasSpotlight) {
-    const viewportW = window.innerWidth
-    const viewportH = window.innerHeight
-    const spaceBelow = viewportH - rect!.bottom
-    const placeBelow = spaceBelow > 220 || rect!.top < 220
+  if (hasSpotlight && visible) {
+    const cardWidth = Math.min(CARD_WIDTH, viewportW - VIEWPORT_MARGIN * 2)
+    const spaceBelow = viewportH - visible.bottom
+    const spaceAbove = visible.top
+    const CARD_MAX_HEIGHT = 260
 
-    let left = rect!.left
-    left = Math.max(VIEWPORT_MARGIN, Math.min(left, viewportW - CARD_WIDTH - VIEWPORT_MARGIN))
+    let left = visible.left
+    left = Math.max(VIEWPORT_MARGIN, Math.min(left, viewportW - cardWidth - VIEWPORT_MARGIN))
+
+    let vertical: CSSProperties
+    if (spaceBelow >= CARD_MAX_HEIGHT || (spaceBelow >= spaceAbove && spaceAbove < CARD_MAX_HEIGHT)) {
+      vertical = { top: Math.min(visible.bottom + SPOTLIGHT_PADDING + 14, viewportH - CARD_MAX_HEIGHT) }
+    } else if (spaceAbove >= CARD_MAX_HEIGHT) {
+      vertical = { bottom: viewportH - visible.top + SPOTLIGHT_PADDING + 14 }
+    } else {
+      // No room beside the target (it fills the screen): dock the card to the bottom edge.
+      vertical = { bottom: VIEWPORT_MARGIN }
+    }
 
     tooltipStyle = {
       position: 'fixed',
       left,
-      width: CARD_WIDTH,
+      width: cardWidth,
       transition: 'all 320ms cubic-bezier(0.16,1,0.3,1)',
-      ...(placeBelow
-        ? { top: rect!.bottom + SPOTLIGHT_PADDING + 14 }
-        : { bottom: viewportH - rect!.top + SPOTLIGHT_PADDING + 14 }),
+      ...vertical,
     }
   } else {
-    tooltipStyle = {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      width: CARD_WIDTH,
-      transform: 'translate(-50%, -50%)',
-    }
+    // Centred by the flex wrapper below — NOT by a transform: the card's entrance animation animates `transform`
+    // and would override it, leaving the card hanging off the bottom-right of the centre point.
+    tooltipStyle = { width: `min(${CARD_WIDTH}px, calc(100vw - ${VIEWPORT_MARGIN * 2}px))` }
   }
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true">
       <div style={spotlightStyle} />
 
-      <div style={tooltipStyle} className="card-elevated animate-enter space-y-3 bg-surface p-5">
+      <div className={hasSpotlight ? undefined : 'pointer-events-none fixed inset-0 flex items-center justify-center'}>
+      <div style={tooltipStyle} className="card-elevated animate-enter pointer-events-auto space-y-3 bg-surface p-5">
         <div className="flex items-start justify-between gap-3">
           <p className="text-[15px] font-bold leading-snug">{step.title}</p>
           <button
@@ -180,6 +219,7 @@ export function TutorialOverlay() {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

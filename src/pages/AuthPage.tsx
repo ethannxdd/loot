@@ -2,14 +2,18 @@ import { Loader2, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Logo } from '@/components/ui/Logo'
 import { useAuth } from '@/hooks/useAuth'
-import { router } from '@/router'
 
-type Mode = 'signin' | 'signup'
+type Mode = 'signin' | 'signup' | 'forgot'
 type Method = 'password' | 'magic'
 
 export function AuthPage() {
-  const { signInWithPassword, signUpWithPassword, signInWithMagicLink, signInWithGoogle } =
-    useAuth()
+  const {
+    signInWithPassword,
+    signUpWithPassword,
+    signInWithMagicLink,
+    signInWithGoogle,
+    resetPassword,
+  } = useAuth()
 
   const [method, setMethod] = useState<Method>('password')
   const [mode, setMode] = useState<Mode>('signin')
@@ -18,28 +22,52 @@ export function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
+  const [confirmationSent, setConfirmationSent] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   async function handlePasswordSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
-    const { error: authError } =
-      mode === 'signin'
-        ? await signInWithPassword(email, password)
-        : await signUpWithPassword(email, password)
+
+    if (mode === 'forgot') {
+      const { error: resetError } = await resetPassword(email.trim())
+      setIsSubmitting(false)
+      if (resetError) setError(resetError)
+      else setResetSent(true)
+      return
+    }
+
+    if (mode === 'signin') {
+      const { error: authError } = await signInWithPassword(email.trim(), password)
+      setIsSubmitting(false)
+      if (authError) setError(authError)
+      // On success the auth state change re-runs the route guards and moves us on.
+      return
+    }
+
+    const { error: authError, needsConfirmation } = await signUpWithPassword(email.trim(), password)
     setIsSubmitting(false)
     if (authError) {
       setError(authError)
       return
     }
-    router.navigate({ to: '/' })
+    // Projects that require email confirmation issue no session — say so instead of doing nothing.
+    if (needsConfirmation) setConfirmationSent(true)
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next)
+    setError(null)
+    setResetSent(false)
+    setConfirmationSent(false)
   }
 
   async function handleMagicLinkSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
-    const { error: authError } = await signInWithMagicLink(email)
+    const { error: authError } = await signInWithMagicLink(email.trim())
     setIsSubmitting(false)
     if (authError) {
       setError(authError)
@@ -51,7 +79,13 @@ export function AuthPage() {
   async function handleGoogle() {
     setError(null)
     const { error: authError } = await signInWithGoogle()
-    if (authError) setError(authError)
+    if (authError) {
+      setError(
+        /provider is not enabled|unsupported provider/i.test(authError)
+          ? 'Google sign-in is not available right now. Use your email instead.'
+          : authError,
+      )
+    }
   }
 
   return (
@@ -98,7 +132,32 @@ export function AuthPage() {
           </button>
         </div>
 
-        {method === 'password' ? (
+        {method === 'password' && (confirmationSent || resetSent) ? (
+          <div className="flex flex-col items-center gap-3 py-4 text-center">
+            <Mail size={28} strokeWidth={1.75} className="text-primary" />
+            <p className="text-sm">
+              {confirmationSent ? (
+                <>
+                  Almost there — we sent a confirmation link to{' '}
+                  <span className="font-semibold">{email}</span>. Open it to activate your account,
+                  then sign in.
+                </>
+              ) : (
+                <>
+                  If <span className="font-semibold">{email}</span> has a Loot account, a password
+                  reset link is on its way.
+                </>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className="text-xs font-semibold text-primary"
+            >
+              Back to sign in
+            </button>
+          </div>
+        ) : method === 'password' ? (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
               <label className="field-label" htmlFor="email">
@@ -114,31 +173,51 @@ export function AuthPage() {
                 placeholder="you@example.com"
               />
             </div>
-            <div>
-              <label className="field-label" htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            {error && <p className="text-xs text-alert">{error}</p>}
+            {mode !== 'forgot' && (
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <label className="field-label" htmlFor="password">
+                    Password
+                  </label>
+                  {mode === 'signin' && (
+                    <button
+                      type="button"
+                      onClick={() => switchMode('forgot')}
+                      className="text-[11px] font-semibold text-primary"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                {mode === 'signup' && (
+                  <p className="mt-1 text-[11px] text-text-subtle">At least 6 characters.</p>
+                )}
+              </div>
+            )}
+            {error && (
+              <p role="alert" className="text-xs text-alert">
+                {error}
+              </p>
+            )}
             <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
               {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-              {mode === 'signin' ? 'Sign in' : 'Create account'}
+              {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
             </button>
             <p className="text-center text-xs text-muted-foreground">
               {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
               <button
                 type="button"
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                onClick={() => switchMode(mode === 'signup' || mode === 'forgot' ? 'signin' : 'signup')}
                 className="font-semibold text-primary"
               >
                 {mode === 'signin' ? 'Sign up' : 'Sign in'}
@@ -168,7 +247,11 @@ export function AuthPage() {
                 placeholder="you@example.com"
               />
             </div>
-            {error && <p className="text-xs text-alert">{error}</p>}
+            {error && (
+              <p role="alert" className="text-xs text-alert">
+                {error}
+              </p>
+            )}
             <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
               {isSubmitting && <Loader2 size={16} className="animate-spin" />}
               Send magic link
@@ -185,6 +268,11 @@ export function AuthPage() {
         <button type="button" onClick={handleGoogle} className="btn btn-ghost w-full">
           Continue with Google
         </button>
+        {error && (magicLinkSent || confirmationSent || resetSent) && (
+          <p role="alert" className="mt-3 text-center text-xs text-alert">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   )

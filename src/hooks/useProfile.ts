@@ -3,6 +3,10 @@ import { fetchProfile, profileQueryKey } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
 import { useAuth } from './useAuth'
+import { refreshCurrentSnapshot } from './useExpenses'
+
+/** Profile fields that feed the monthly snapshot (Business Rule 9). */
+const SNAPSHOT_FIELDS: (keyof Profile)[] = ['gross_income', 'net_income', 'currency_code']
 
 /** Fetches the current user's profiles row. Disabled until a user is signed in. */
 export function useProfile() {
@@ -33,8 +37,16 @@ export function useUpdateProfile() {
       if (error) throw error
       return data as Profile
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, patch) => {
       queryClient.setQueryData(profileQueryKey(user?.id), data)
+      // Changing income changes the month's numbers — keep the snapshot (and everything built on it) in step.
+      if (user && SNAPSHOT_FIELDS.some((f) => f in patch)) {
+        try {
+          await refreshCurrentSnapshot(queryClient, user.id)
+        } catch (err) {
+          console.warn('Snapshot refresh failed', err)
+        }
+      }
     },
   })
 }

@@ -25,8 +25,40 @@ export interface Profile {
   updated_at: string
 }
 
-export const CURRENCIES = ['ZAR', 'USD', 'EUR', 'GBP'] as const
+export const CURRENCIES = [
+  'ZAR',
+  'USD',
+  'EUR',
+  'GBP',
+  'AUD',
+  'CAD',
+  'NZD',
+  'AED',
+  'BWP',
+  'NAD',
+  'ZMW',
+  'MZN',
+  'KES',
+  'NGN',
+] as const
 export type CurrencyCode = (typeof CURRENCIES)[number]
+
+export const CURRENCY_LABELS: Record<CurrencyCode, string> = {
+  ZAR: 'South African Rand (ZAR)',
+  USD: 'US Dollar (USD)',
+  EUR: 'Euro (EUR)',
+  GBP: 'British Pound (GBP)',
+  AUD: 'Australian Dollar (AUD)',
+  CAD: 'Canadian Dollar (CAD)',
+  NZD: 'New Zealand Dollar (NZD)',
+  AED: 'UAE Dirham (AED)',
+  BWP: 'Botswana Pula (BWP)',
+  NAD: 'Namibian Dollar (NAD)',
+  ZMW: 'Zambian Kwacha (ZMW)',
+  MZN: 'Mozambican Metical (MZN)',
+  KES: 'Kenyan Shilling (KES)',
+  NGN: 'Nigerian Naira (NGN)',
+}
 
 export const PAY_FREQUENCIES = ['monthly', 'biweekly', 'weekly'] as const
 export type PayFrequency = (typeof PAY_FREQUENCIES)[number]
@@ -56,7 +88,35 @@ export interface Expense {
 }
 
 export type NewExpense = Pick<Expense, 'name' | 'category' | 'amount' | 'frequency' | 'is_fixed'> &
-  Partial<Pick<Expense, 'due_day' | 'notify_enabled' | 'notify_lead_days' | 'work_related'>>
+  Partial<
+    Pick<
+      Expense,
+      | 'due_day'
+      | 'notify_enabled'
+      | 'notify_lead_days'
+      | 'work_related'
+      | 'original_amount'
+      | 'original_currency'
+      | 'exchange_rate'
+    >
+  >
+
+/** Mirrors public.income_streams — see LOOT-SCHEMA.md Migration 003. */
+export type IncomeFrequency = 'monthly' | 'biweekly' | 'weekly' | 'yearly'
+
+export interface IncomeStream {
+  id: string
+  user_id: string
+  name: string
+  gross_amount: number
+  net_amount: number
+  frequency: IncomeFrequency
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type NewIncomeStream = Pick<IncomeStream, 'name' | 'gross_amount' | 'net_amount' | 'frequency'>
 
 /** Mirrors public.savings_goals — see LOOT-SCHEMA.md Migration 004. */
 export interface SavingsGoal {
@@ -82,7 +142,7 @@ export interface SavingsGoal {
 }
 
 export type NewGoal = Pick<SavingsGoal, 'name' | 'category' | 'target_amount'> &
-  Partial<Pick<SavingsGoal, 'target_date' | 'note' | 'current_amount' | 'sort_order'>>
+  Partial<Pick<SavingsGoal, 'target_date' | 'note' | 'current_amount' | 'sort_order' | 'progress_mode' | 'weight'>>
 
 /** Mirrors public.goal_contributions — see LOOT-SCHEMA.md Migration 005. */
 export interface GoalContribution {

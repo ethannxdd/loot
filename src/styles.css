@@ -376,3 +376,18 @@ label.field-label {
     animation: none;
   }
 }
+
+/*
+ * Charts never size their container. Recharts writes the measured width into the SVG, and that width then counts as
+ * the container's minimum content width — so a chart measured at desktop width refuses to shrink on a phone, and one
+ * wide chart drags the whole page (and the fixed tab bar) wider than the screen. Taking the wrapper out of flow makes
+ * the parent's own layout the only source of truth for the chart's size.
+ */
+.recharts-responsive-container {
+  position: relative;
+}
+.recharts-responsive-container > .recharts-wrapper {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+}

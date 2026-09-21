@@ -26,7 +26,7 @@ export function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
             {plan.phases.length} phase{plan.phases.length !== 1 ? 's' : ''} · {plan.tax_rate_pct}% effective tax
           </p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1" data-export-ignore>
           <button
             type="button"
             onClick={onEdit}
@@ -70,7 +70,7 @@ export function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
             {formatCurrency(totalLeftover)}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" data-export-ignore>
           <button
             type="button"
             onClick={() => ref.current && exportElementAsPng(ref.current, `${plan.name}-plan`)}

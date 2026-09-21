@@ -32,17 +32,17 @@ export function TaxSetupForm({ initial, isSubmitting, onSubmit }: TaxSetupFormPr
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     onSubmit({
-      age: Number(age) || 30,
+      age: Math.min(120, Math.max(16, Math.round(Number(age)) || 30)),
       employment_type: employmentType,
       is_provisional_taxpayer: isProvisional ? 'yes' : 'no',
       home_office_enabled: homeOfficeEnabled ? 'yes' : 'no',
-      home_office_area_m2: Number(homeOfficeArea) || 0,
-      home_total_area_m2: Number(homeTotalArea) || 0,
+      home_office_area_m2: Math.max(0, Number(homeOfficeArea) || 0),
+      home_total_area_m2: Math.max(0, Number(homeTotalArea) || 0),
       has_travel_allowance: hasTravelAllowance,
       has_ra: hasRa,
       has_investment_income: hasInvestmentIncome,
       has_medical_aid: hasMedicalAid,
-      medical_dependants: Number(medicalDependants) || 0,
+      medical_dependants: Math.min(20, Math.max(0, Math.round(Number(medicalDependants)) || 0)),
     })
   }
 

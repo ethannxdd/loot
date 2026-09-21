@@ -20,11 +20,11 @@ export function DebtRow({ debt, onEdit, onDelete }: DebtRowProps) {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <span className="tnum text-sm">{formatCurrency(debt.balance)}</span>
-        <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
           <button
             type="button"
             onClick={onEdit}
-            aria-label="Edit debt"
+            aria-label={`Edit ${debt.name}`}
             className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-foreground"
           >
             <Pencil size={14} strokeWidth={1.75} />
@@ -32,7 +32,7 @@ export function DebtRow({ debt, onEdit, onDelete }: DebtRowProps) {
           <button
             type="button"
             onClick={onDelete}
-            aria-label="Delete debt"
+            aria-label={`Delete ${debt.name}`}
             className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert"
           >
             <Trash2 size={14} strokeWidth={1.75} />

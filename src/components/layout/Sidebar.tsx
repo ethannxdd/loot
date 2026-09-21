@@ -3,7 +3,7 @@ import { LogOut } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { Logo } from '@/components/ui/Logo'
 import { useAuth } from '@/hooks/useAuth'
-import { NAV_GROUPS } from '@/lib/nav'
+import { isActivePath, NAV_GROUPS } from '@/lib/nav'
 
 export function Sidebar() {
   const { signOut } = useAuth()
@@ -16,7 +16,7 @@ export function Sidebar() {
           <Logo size={28} />
           <span className="text-base font-bold">Loot</span>
         </div>
-        <NotificationBell />
+        <NotificationBell align="left" />
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4">
@@ -25,7 +25,7 @@ export function Sidebar() {
             <div className="overline mb-1.5 px-3">{group.label}</div>
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                const isActive = pathname === item.to
+                const isActive = isActivePath(pathname, item.to)
                 const Icon = item.icon
                 return (
                   <Link

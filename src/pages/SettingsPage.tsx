@@ -1,11 +1,15 @@
-import { HelpCircle, LogOut, PlayCircle, Shield } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { BureauScoreUpload } from '@/components/score/BureauScoreUpload'
 import { FactorBreakdown } from '@/components/score/FactorBreakdown'
 import { ScoreRing } from '@/components/score/ScoreRing'
 import { ScoreTimelineChart } from '@/components/score/ScoreTimelineChart'
+import { DataSection } from '@/components/settings/DataSection'
+import { FinancialIdentitySection } from '@/components/settings/FinancialIdentitySection'
+import { HelpSection } from '@/components/settings/HelpSection'
 import { HouseholdSection } from '@/components/settings/HouseholdSection'
-import { useTutorialContext } from '@/context/TutorialContext'
-import { useAuth } from '@/hooks/useAuth'
+import { IncomeSection } from '@/components/settings/IncomeSection'
+import { PreferencesSection } from '@/components/settings/PreferencesSection'
+import { ProfileSection } from '@/components/settings/ProfileSection'
 import { useBudgeScore } from '@/hooks/useBudgeScore'
 import { useBureauScores } from '@/hooks/useBureauScores'
 import { useProfile } from '@/hooks/useProfile'
@@ -83,71 +87,38 @@ function LootScoreSection() {
   )
 }
 
-function HelpSection() {
-  const { start } = useTutorialContext()
-
-  return (
-    <section className="card space-y-3">
-      <div className="overline flex items-center gap-1.5">
-        <HelpCircle size={13} strokeWidth={2} /> Help
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold">Guided tour</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Replay the two-minute walkthrough of every page.
-          </p>
-        </div>
-        <button type="button" onClick={start} className="btn btn-ghost shrink-0">
-          <PlayCircle size={15} strokeWidth={1.75} />
-          Replay
-        </button>
-      </div>
-    </section>
-  )
-}
-
 export function SettingsPage() {
-  const { user, signOut } = useAuth()
-  const { data: profile } = useProfile()
+  const { data: profile, isLoading } = useProfile()
 
   return (
-    <div className="animate-enter max-w-lg space-y-6">
+    <div className="animate-enter max-w-2xl space-y-6">
       <header>
         <h1 className="text-[32px] font-bold tracking-[-0.025em]">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Income stream management and notification preferences land in a later phase.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Your profile, income, preferences and data.</p>
       </header>
 
-      <section className="card space-y-4">
-        <div className="overline">Profile</div>
-        <dl className="space-y-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-text-muted">Name</dt>
-            <dd className="font-medium">{profile?.display_name ?? '—'}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-text-muted">Email</dt>
-            <dd className="font-medium">{user?.email}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-text-muted">Currency</dt>
-            <dd className="font-medium">{profile?.currency_code ?? '—'}</dd>
-          </div>
-        </dl>
-      </section>
+      {isLoading || !profile ? (
+        <div className="space-y-4">
+          <div className="skeleton h-64 rounded-2xl" />
+          <div className="skeleton h-48 rounded-2xl" />
+        </div>
+      ) : (
+        <>
+          <ProfileSection profile={profile} />
+          <IncomeSection profile={profile} />
+          <PreferencesSection profile={profile} />
+        </>
+      )}
 
       <HouseholdSection />
+
+      <FinancialIdentitySection />
 
       <LootScoreSection />
 
       <HelpSection />
 
-      <button type="button" onClick={() => signOut()} className="btn btn-destructive">
-        <LogOut size={16} strokeWidth={1.75} />
-        Sign out
-      </button>
+      <DataSection />
     </div>
   )
 }

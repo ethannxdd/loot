@@ -14,7 +14,7 @@ type Tab = (typeof TABS)[number]
 export function StatsPage() {
   const [tab, setTab] = useState<Tab>('Overview')
   const { data: profile } = useProfile()
-  const { data: snapshots = [] } = useSnapshots(12)
+  const { data: snapshots = [], isLoading: snapshotsLoading } = useSnapshots(12)
   const { data: checks = [] } = useAffordabilityChecks(100)
 
   return (
@@ -26,25 +26,29 @@ export function StatsPage() {
         </p>
       </header>
 
-      <div className="flex w-fit rounded-[10px] border border-border bg-input p-1">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
-              tab === t ? 'bg-surface-3 text-foreground' : 'text-text-muted'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="-mx-1 overflow-x-auto px-1">
+        <div className="flex w-fit rounded-[10px] border border-border bg-input p-1">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              aria-pressed={tab === t}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-2 sm:px-3.5 text-xs font-semibold transition-colors ${
+                tab === t ? 'bg-surface-3 text-foreground' : 'text-text-muted'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {tab === 'Overview' && <OverviewTab snapshots={snapshots} />}
-      {tab === 'Category trends' && <CategoryTrendsTab snapshots={snapshots} />}
+      {snapshotsLoading && tab !== 'Net worth' && <div className="skeleton h-64 rounded-2xl" />}
+      {!snapshotsLoading && tab === 'Overview' && <OverviewTab snapshots={snapshots} />}
+      {!snapshotsLoading && tab === 'Category trends' && <CategoryTrendsTab snapshots={snapshots} />}
       {tab === 'Net worth' && <NetWorthTab snapshots={snapshots} />}
-      {tab === 'Benchmarks' && (
+      {!snapshotsLoading && tab === 'Benchmarks' && (
         <BenchmarksTab
           latestSnapshot={snapshots[snapshots.length - 1]}
           grossIncome={profile?.gross_income ?? 0}

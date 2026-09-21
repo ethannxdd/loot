@@ -1,7 +1,8 @@
-import { Check } from 'lucide-react'
+import { AlertTriangle, Check } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { simulatePayoff, totalDebtBalance, totalMinPayments } from '@/lib/debt-math'
+import { parseDateOnly } from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
 import type { Debt } from '@/lib/types'
 
@@ -9,6 +10,8 @@ interface DebtStrategyComparisonProps {
   debts: Debt[]
   extraPayment: number
   onExtraPaymentChange: (value: number) => void
+  /** Called when the user finishes editing the extra payment (blur / Enter) — the moment to save it. */
+  onExtraPaymentCommit: (value: number) => void
   chosenStrategy: string | null
   onChooseStrategy: (strategy: 'avalanche' | 'snowball') => void
   isSaving?: boolean
@@ -26,6 +29,7 @@ export function DebtStrategyComparison({
   debts,
   extraPayment,
   onExtraPaymentChange,
+  onExtraPaymentCommit,
   chosenStrategy,
   onChooseStrategy,
   isSaving,
@@ -35,6 +39,7 @@ export function DebtStrategyComparison({
   const avalanche = useMemo(() => simulatePayoff(debts, extraPayment, 'avalanche'), [debts, extraPayment])
   const snowball = useMemo(() => simulatePayoff(debts, extraPayment, 'snowball'), [debts, extraPayment])
 
+  const nameOf = (id: string) => debts.find((d) => d.id === id)?.name ?? 'Debt'
   const active = chartStrategy === 'avalanche' ? avalanche : snowball
   const chartData = active.schedule
     .filter((_, i) => i % Math.max(1, Math.floor(active.schedule.length / 24)) === 0)
@@ -69,13 +74,17 @@ export function DebtStrategyComparison({
             min={0}
             step={50}
             value={extraPayment || ''}
-            onChange={(e) => onExtraPaymentChange(Number(e.target.value) || 0)}
+            onChange={(e) => onExtraPaymentChange(Math.max(0, Number(e.target.value) || 0))}
+            onBlur={(e) => onExtraPaymentCommit(Math.max(0, Number(e.target.value) || 0))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
             placeholder="0"
           />
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {(
           [
             { key: 'avalanche' as const, title: 'Avalanche', desc: 'Highest interest rate first — saves the most interest.' },
@@ -101,16 +110,43 @@ export function DebtStrategyComparison({
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg bg-surface-2 px-3 py-2">
-                  <p className="overline">Debt-free in</p>
-                  <p className="tnum text-sm">{monthLabel(result.totalMonths)}</p>
+              {result.neverPaidOff ? (
+                <div className="flex items-start gap-2 rounded-lg border border-alert/30 bg-alert/10 px-3 py-2.5 text-xs text-alert">
+                  <AlertTriangle size={14} strokeWidth={1.75} className="mt-0.5 shrink-0" />
+                  <p>
+                    At these payments {result.order.filter((id) => !result.perDebt[id].paidOff).map(nameOf).join(', ')}{' '}
+                    never gets paid off — the interest is as big as, or bigger than, the payment. Raise the minimum or add an extra payment.
+                  </p>
                 </div>
-                <div className="rounded-lg bg-surface-2 px-3 py-2">
-                  <p className="overline">Total interest</p>
-                  <p className="tnum text-sm">{formatCurrency(result.totalInterest)}</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-surface-2 px-3 py-2">
+                    <p className="overline">Debt-free in</p>
+                    <p className="tnum text-sm">{monthLabel(result.totalMonths)}</p>
+                  </div>
+                  <div className="rounded-lg bg-surface-2 px-3 py-2">
+                    <p className="overline">Total interest</p>
+                    <p className="tnum text-sm">{formatCurrency(result.totalInterest)}</p>
+                  </div>
                 </div>
-              </div>
+              )}
+              <ol className="space-y-1 text-xs text-muted-foreground">
+                {result.order.map((id, i) => {
+                  const entry = result.perDebt[id]
+                  return (
+                    <li key={id} className="flex justify-between gap-2">
+                      <span className="truncate">
+                        {i + 1}. {nameOf(id)}
+                      </span>
+                      <span className="tnum shrink-0">
+                        {entry.paidOff
+                          ? parseDateOnly(entry.payoffDate).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' })
+                          : 'Not paid off'}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
               <button
                 type="button"
                 onClick={(e) => {
@@ -131,6 +167,11 @@ export function DebtStrategyComparison({
         <p className="overline mb-3">
           Payoff timeline — {chartStrategy === 'avalanche' ? 'Avalanche' : 'Snowball'}
         </p>
+        {active.neverPaidOff ? (
+          <p className="py-10 text-center text-xs text-text-muted">
+            The balance never reaches zero at these payments, so there's no timeline to draw.
+          </p>
+        ) : (
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
@@ -141,6 +182,8 @@ export function DebtStrategyComparison({
                 tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }}
                 axisLine={false}
                 tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={28}
               />
               <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} axisLine={false} tickLine={false} width={0} />
               <Tooltip
@@ -157,6 +200,7 @@ export function DebtStrategyComparison({
             </LineChart>
           </ResponsiveContainer>
         </div>
+        )}
       </div>
     </div>
   )

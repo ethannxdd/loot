@@ -56,3 +56,15 @@ export function useCreateAffordabilityCheck() {
     },
   })
 }
+
+export function useDeleteAffordabilityCheck() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('affordability_checks').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: affordabilityChecksQueryKey(user?.id) }),
+  })
+}

@@ -1,4 +1,5 @@
-import { monthlyEquivalent } from './money'
+import { GROWTH_CATEGORIES } from './categories'
+import { currentMonthKey, monthlyEquivalent, totalMonthlyExpenses } from './money'
 import type { Expense, MonthlySnapshot } from './types'
 
 export type ForecastConfidence = 'high' | 'medium' | 'low'
@@ -19,11 +20,16 @@ export interface Forecast {
   flaggedCategories: FlaggedCategory[]
 }
 
-/** Live monthly-equivalent spend per category from current (non-deleted) expenses. */
+/**
+ * Live monthly-equivalent spend per category from current (non-deleted) expenses. Savings and investments
+ * are left out, exactly as `monthly_snapshots.expenses_by_category` leaves them out, so live figures and
+ * history are like-for-like (otherwise a R2,000 savings debit looked like a category with no history).
+ */
 export function currentExpensesByCategory(expenses: Expense[]): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const e of expenses) {
     if (e.deleted_at) continue
+    if (GROWTH_CATEGORIES.has(e.category as never)) continue
     totals[e.category] = (totals[e.category] ?? 0) + monthlyEquivalent(e)
   }
   return totals
@@ -40,9 +46,16 @@ const ANOMALY_THRESHOLD = 0.25
 export function computeForecast(
   recentSnapshots: MonthlySnapshot[],
   liveExpenses: Expense[],
-  liveNetIncome: number
+  liveNetIncome: number,
+  from = new Date()
 ): Forecast {
-  const history = recentSnapshots.slice(-3)
+  // History = the last three COMPLETED months. The current month's own snapshot is just today's live
+  // data again, so averaging it in would make "tracking above average" compare a number with itself.
+  const thisMonth = currentMonthKey(from)
+  const history = recentSnapshots
+    .filter((s) => s.month < thisMonth)
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .slice(-3)
   const current = currentExpensesByCategory(liveExpenses)
 
   const categories = new Set<string>(Object.keys(current))
@@ -76,7 +89,13 @@ export function computeForecast(
   const projectedIncome =
     incomeHistory.length > 0 ? (incomeHistory.reduce((a, b) => a + b, 0) / incomeHistory.length + liveNetIncome) / 2 : liveNetIncome
 
-  const projectedTotalExpenses = Object.values(projectedExpensesByCategory).reduce((a, b) => a + b, 0)
+  // The total is blended the same way as each category, but from the snapshots' own totals so savings and
+  // investments (which have no per-category history) are still counted — Business Rule 1 treats them as outgoings.
+  const liveTotal = totalMonthlyExpenses(liveExpenses)
+  const projectedTotalExpenses =
+    history.length > 0
+      ? (history.reduce((sum, s) => sum + s.total_expenses, 0) / history.length + liveTotal) / 2
+      : liveTotal
   const projectedDisposableIncome = projectedIncome - projectedTotalExpenses
 
   const confidence: ForecastConfidence = history.length >= 3 ? 'high' : history.length >= 1 ? 'medium' : 'low'

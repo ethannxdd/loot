@@ -1,7 +1,9 @@
 import { Pencil, Plus, Scale, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { NetWorthItemForm } from '@/components/networth/NetWorthItemForm'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Modal } from '@/components/ui/Modal'
 import {
   useCreateNetWorthItem,
@@ -20,6 +22,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const updateItem = useUpdateNetWorthItem()
   const deleteItem = useDeleteNetWorthItem()
   const [modal, setModal] = useState<'new' | NetWorthItem | null>(null)
+  const [toDelete, setToDelete] = useState<NetWorthItem | null>(null)
 
   const totals = computeNetWorthTotals(items)
   const assets = items.filter((i) => i.kind === 'asset')
@@ -33,7 +36,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="card">
           <p className="overline">Assets</p>
           <p className="tnum text-lg text-primary">{formatCurrency(totals.assetsTotal)}</p>
@@ -47,6 +50,12 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
           <p className={`tnum text-lg ${totals.netWorth < 0 ? 'text-alert' : ''}`}>{formatCurrency(totals.netWorth)}</p>
         </div>
       </div>
+
+      {chartData.length < 2 && items.length > 0 && (
+        <p className="px-1 text-xs text-text-muted">
+          Your net worth is saved with each month's snapshot — the trend chart appears once two months have data.
+        </p>
+      )}
 
       {chartData.length >= 2 && (
         <div className="card">
@@ -68,7 +77,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
         </div>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {(
           [
             { title: 'Assets', list: assets },
@@ -86,11 +95,11 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="tnum text-sm">{formatCurrency(item.value)}</span>
-                  <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
-                    <button type="button" onClick={() => setModal(item)} aria-label="Edit" className="flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-foreground">
+                  <div className="flex transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                    <button type="button" onClick={() => setModal(item)} aria-label={`Edit ${item.label}`} className="flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-foreground">
                       <Pencil size={13} strokeWidth={1.75} />
                     </button>
-                    <button type="button" onClick={() => deleteItem.mutate(item.id)} aria-label="Delete" className="flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert">
+                    <button type="button" onClick={() => setToDelete(item)} aria-label={`Delete ${item.label}`} className="flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert">
                       <Trash2 size={13} strokeWidth={1.75} />
                     </button>
                   </div>
@@ -118,6 +127,25 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
         </div>
       )}
 
+      {toDelete && (
+        <ConfirmModal
+          title={`Delete ${toDelete.label}?`}
+          confirmLabel="Delete"
+          isPending={deleteItem.isPending}
+          onCancel={() => setToDelete(null)}
+          onConfirm={() =>
+            deleteItem.mutate(toDelete.id, {
+              onSuccess: () => {
+                setToDelete(null)
+                toast.success(`${toDelete.label} deleted`)
+              },
+            })
+          }
+        >
+          <p>It will be removed from your net worth. This can't be undone.</p>
+        </ConfirmModal>
+      )}
+
       {modal && (
         <Modal title={modal === 'new' ? 'Add item' : 'Edit item'} onClose={() => setModal(null)}>
           <NetWorthItemForm
@@ -126,9 +154,22 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
             onCancel={() => setModal(null)}
             onSubmit={(values) => {
               if (modal === 'new') {
-                createItem.mutate(values, { onSuccess: () => setModal(null) })
+                createItem.mutate(values, {
+                  onSuccess: () => {
+                    setModal(null)
+                    toast.success(`${values.label} added`)
+                  },
+                })
               } else {
-                updateItem.mutate({ id: modal.id, patch: values }, { onSuccess: () => setModal(null) })
+                updateItem.mutate(
+                  { id: modal.id, patch: values },
+                  {
+                    onSuccess: () => {
+                      setModal(null)
+                      toast.success('Item updated')
+                    },
+                  },
+                )
               }
             }}
           />

@@ -1,19 +1,14 @@
 import { Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Logo } from '@/components/ui/Logo'
-import { useUpdateProfile } from '@/hooks/useProfile'
+import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
+import { monthlyIncomeAmount } from '@/lib/money'
 import { upsertCurrentMonthSnapshot } from '@/lib/snapshot'
-import { CURRENCIES, PAY_FREQUENCIES, type CurrencyCode, type PayFrequency } from '@/lib/types'
+import { formatCurrencyExact } from '@/lib/utils'
+import { CURRENCIES, CURRENCY_LABELS, PAY_FREQUENCIES, type CurrencyCode, type PayFrequency } from '@/lib/types'
 import { router } from '@/router'
 
 const TOTAL_STEPS = 3
-
-const CURRENCY_LABELS: Record<CurrencyCode, string> = {
-  ZAR: 'South African Rand (ZAR)',
-  USD: 'US Dollar (USD)',
-  EUR: 'Euro (EUR)',
-  GBP: 'British Pound (GBP)',
-}
 
 const FREQUENCY_LABELS: Record<PayFrequency, string> = {
   monthly: 'Monthly',
@@ -23,10 +18,14 @@ const FREQUENCY_LABELS: Record<PayFrequency, string> = {
 
 export function OnboardingPage() {
   const updateProfile = useUpdateProfile()
+  const { data: existingProfile } = useProfile()
   const [step, setStep] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
-  const [displayName, setDisplayName] = useState('')
+  // The signup trigger seeds display_name with the Google name (or the email address). Keep a real name,
+  // but don't pre-fill something that is just an email.
+  const seededName = existingProfile?.display_name ?? ''
+  const [displayName, setDisplayName] = useState(seededName.includes('@') ? '' : seededName)
   const [currencyCode, setCurrencyCode] = useState<CurrencyCode>('ZAR')
   const [payFrequency, setPayFrequency] = useState<PayFrequency>('monthly')
   const [grossIncome, setGrossIncome] = useState('')
@@ -34,7 +33,14 @@ export function OnboardingPage() {
   const [safetyBufferPct, setSafetyBufferPct] = useState('12.5')
 
   const canAdvanceFromStep1 = displayName.trim().length > 0
-  const canAdvanceFromStep2 = grossIncome !== '' && netIncome !== ''
+  const canAdvanceFromStep2 =
+    grossIncome !== '' && netIncome !== '' && Number(grossIncome) >= 0 && Number(netIncome) >= 0
+
+  // Loot works in monthly figures. People paid weekly or fortnightly type what lands per pay, so convert.
+  const payPeriodWord: Record<PayFrequency, string> = { monthly: 'month', biweekly: 'fortnight', weekly: 'week' }
+  const toMonthly = (amount: string) => monthlyIncomeAmount(Number(amount) || 0, payFrequency)
+  const bufferNumber = safetyBufferPct === '' ? 12.5 : Number(safetyBufferPct)
+  const bufferValid = Number.isFinite(bufferNumber) && bufferNumber >= 0 && bufferNumber <= 50
 
   function goNext() {
     setError(null)
@@ -53,15 +59,31 @@ export function OnboardingPage() {
         display_name: displayName.trim(),
         currency_code: currencyCode,
         pay_frequency: payFrequency,
-        gross_income: Number(grossIncome) || 0,
-        net_income: Number(netIncome) || 0,
-        safety_buffer_pct: Number(safetyBufferPct) || 12.5,
+        gross_income: Math.round(toMonthly(grossIncome) * 100) / 100,
+        net_income: Math.round(toMonthly(netIncome) * 100) / 100,
+        // 0% is a legitimate choice — only fall back to the default when the field is blank.
+        safety_buffer_pct: bufferNumber,
         onboarded_at: new Date().toISOString(),
       })
-      await upsertCurrentMonthSnapshot(updated, [])
-      router.navigate({ to: '/dashboard' })
+      try {
+        await upsertCurrentMonthSnapshot(updated, [])
+      } catch (snapshotError) {
+        // The profile is saved; the first snapshot is recreated automatically when the app loads.
+        console.warn('First snapshot failed', snapshotError)
+      }
+      void router.navigate({ to: '/dashboard' })
     } catch {
       setError('Something went wrong saving your profile. Try again.')
+    }
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (step < TOTAL_STEPS) {
+      const blocked = (step === 1 && !canAdvanceFromStep1) || (step === 2 && !canAdvanceFromStep2)
+      if (!blocked) goNext()
+    } else if (bufferValid && !updateProfile.isPending) {
+      void finish()
     }
   }
 
@@ -89,6 +111,7 @@ export function OnboardingPage() {
           ))}
         </div>
 
+        <form onSubmit={handleSubmit} noValidate>
         {step === 1 && (
           <div className="space-y-4">
             <div>
@@ -155,7 +178,7 @@ export function OnboardingPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="field-label" htmlFor="gross-income">
-                  Gross income
+                  Gross income per {payPeriodWord[payFrequency]}
                 </label>
                 <input
                   id="gross-income"
@@ -169,7 +192,7 @@ export function OnboardingPage() {
               </div>
               <div>
                 <label className="field-label" htmlFor="net-income">
-                  Net income
+                  Net income per {payPeriodWord[payFrequency]}
                 </label>
                 <input
                   id="net-income"
@@ -182,6 +205,14 @@ export function OnboardingPage() {
                 />
               </div>
             </div>
+            {payFrequency !== 'monthly' && Number(netIncome) > 0 && (
+              <p className="text-xs text-text-muted">
+                That's about {formatCurrencyExact(toMonthly(netIncome), currencyCode)} a month take-home — Loot works in monthly figures.
+              </p>
+            )}
+            {Number(grossIncome) > 0 && Number(netIncome) > Number(grossIncome) && (
+              <p className="text-xs text-caution">Your take-home is higher than your gross income — double-check the two numbers.</p>
+            )}
           </div>
         )}
 
@@ -203,7 +234,7 @@ export function OnboardingPage() {
                 type="number"
                 inputMode="decimal"
                 min={0}
-                max={100}
+                max={50}
                 step={0.5}
                 value={safetyBufferPct}
                 onChange={(e) => setSafetyBufferPct(e.target.value)}
@@ -212,7 +243,16 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {error && <p className="mt-4 text-xs text-alert">{error}</p>}
+        {step === 3 && !bufferValid && (
+          <p role="alert" className="mt-3 text-xs text-alert">
+            Choose a buffer between 0% and 50%.
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="mt-4 text-xs text-alert">
+            {error}
+          </p>
+        )}
 
         <div className="mt-7 flex gap-3">
           {step > 1 && (
@@ -222,8 +262,7 @@ export function OnboardingPage() {
           )}
           {step < TOTAL_STEPS ? (
             <button
-              type="button"
-              onClick={goNext}
+              type="submit"
               disabled={
                 (step === 1 && !canAdvanceFromStep1) || (step === 2 && !canAdvanceFromStep2)
               }
@@ -233,9 +272,8 @@ export function OnboardingPage() {
             </button>
           ) : (
             <button
-              type="button"
-              onClick={finish}
-              disabled={updateProfile.isPending}
+              type="submit"
+              disabled={updateProfile.isPending || !bufferValid}
               className="btn btn-primary flex-1"
             >
               {updateProfile.isPending && <Loader2 size={16} className="animate-spin" />}
@@ -243,6 +281,7 @@ export function OnboardingPage() {
             </button>
           )}
         </div>
+        </form>
       </div>
     </div>
   )

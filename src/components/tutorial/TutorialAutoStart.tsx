@@ -17,8 +17,12 @@ export function TutorialAutoStart() {
     if (hasTriggered.current || active || !profile) return
     if (profile.tutorial_completed) return
 
-    hasTriggered.current = true
-    const timer = setTimeout(() => start(), 700)
+    // Flag inside the timeout (not before it): React StrictMode runs effects twice in development, and
+    // flagging first would let the first run's cleared timer "use up" the only launch.
+    const timer = setTimeout(() => {
+      hasTriggered.current = true
+      start()
+    }, 700)
     return () => clearTimeout(timer)
   }, [profile, active, start])
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { ExpenseForm } from '@/components/expenses/ExpenseForm'
 import { useAddExpense } from '@/hooks/useExpenses'
 import type { NewExpense } from '@/lib/types'
@@ -8,7 +9,12 @@ export function QuickAddExpense() {
   const [formKey, setFormKey] = useState(0)
 
   function handleSubmit(values: NewExpense) {
-    addExpense.mutate(values, { onSuccess: () => setFormKey((k) => k + 1) })
+    addExpense.mutate(values, {
+      onSuccess: () => {
+        setFormKey((k) => k + 1)
+        toast.success(`${values.name} added`)
+      },
+    })
   }
 
   return (

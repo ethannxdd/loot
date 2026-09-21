@@ -70,10 +70,15 @@ export function useBudgeScore(): BudgeScoreState {
   const lastComputedKey = useRef<string | null>(null)
 
   const latestSnapshot = snapshots[snapshots.length - 1] as MonthlySnapshot | undefined
+  const ready = !snapshotsLoading && !debtsLoading && !scoresLoading
+  // The score depends on debt figures too (DTI is 30% of it), so recompute when they change as well.
+  const debtSignature = debts.map((d) => `${d.id}:${d.balance}:${d.min_payment}`).join('|')
 
   useEffect(() => {
-    if (!latestSnapshot) return
-    const key = `${latestSnapshot.month}:${latestSnapshot.updated_at}`
+    // Don't compute until every input has loaded — scoring against a not-yet-fetched (empty) debt list
+    // would save a wrong score that then never gets corrected.
+    if (!ready || !latestSnapshot) return
+    const key = `${latestSnapshot.month}:${latestSnapshot.updated_at}:${debtSignature}`
     if (lastComputedKey.current === key) return
     lastComputedKey.current = key
 
@@ -83,7 +88,7 @@ export function useBudgeScore(): BudgeScoreState {
 
     upsert.mutate({ month: latestSnapshot.month, score, factors })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestSnapshot?.month, latestSnapshot?.updated_at])
+  }, [ready, latestSnapshot?.month, latestSnapshot?.updated_at, debtSignature])
 
   const history = scores
   const latest = history.length > 0 ? history[history.length - 1] : null

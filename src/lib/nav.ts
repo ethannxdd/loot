@@ -62,3 +62,8 @@ export const MOBILE_TABS: NavItem[] = [
   { to: '/goals', label: 'Goals', icon: Target },
   { to: '/stats', label: 'Stats', icon: BarChart3 },
 ]
+
+/** True when `pathname` is the nav item's page or one of its children (e.g. /goals/abc → Goals). */
+export function isActivePath(pathname: string, to: string): boolean {
+  return pathname === to || pathname.startsWith(`${to}/`)
+}

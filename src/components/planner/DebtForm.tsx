@@ -18,17 +18,19 @@ export function DebtForm({ initial, isSubmitting, submitLabel = 'Add debt', onSu
   const [balance, setBalance] = useState(initial?.balance?.toString() ?? '')
   const [interestRate, setInterestRate] = useState(initial?.interest_rate?.toString() ?? '')
   const [minPayment, setMinPayment] = useState(initial?.min_payment?.toString() ?? '')
+  const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !balance) return
-    onSubmit({
-      name: name.trim(),
-      account_type: accountType,
-      balance: Number(balance) || 0,
-      interest_rate: Number(interestRate) || 0,
-      min_payment: Number(minPayment) || 0,
-    })
+    setError(null)
+    const bal = Number(balance)
+    const rate = interestRate === '' ? 0 : Number(interestRate)
+    const min = minPayment === '' ? 0 : Number(minPayment)
+    if (!name.trim()) return setError('Give the debt a name.')
+    if (!Number.isFinite(bal) || bal < 0) return setError('Enter the current balance (zero or more).')
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) return setError('The interest rate must be between 0% and 100%.')
+    if (!Number.isFinite(min) || min < 0) return setError("The minimum payment can't be negative.")
+    onSubmit({ name: name.trim(), account_type: accountType, balance: bal, interest_rate: rate, min_payment: min })
   }
 
   return (
@@ -107,6 +109,12 @@ export function DebtForm({ initial, isSubmitting, submitLabel = 'Add debt', onSu
           />
         </div>
       </div>
+
+      {error && (
+        <p role="alert" className="text-xs text-alert">
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-3 pt-1">
         {onCancel && (

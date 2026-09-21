@@ -73,3 +73,15 @@ export function useToggleSubscriptionCancel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: subscriptionReviewsQueryKey(user?.id) }),
   })
 }
+
+export function useDeleteSubscription() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('subscription_reviews').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: subscriptionReviewsQueryKey(user?.id) }),
+  })
+}

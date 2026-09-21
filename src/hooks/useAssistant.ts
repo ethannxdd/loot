@@ -1,26 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FunctionsHttpError } from '@supabase/supabase-js'
+import { describeFunctionError } from '@/lib/function-error'
 import { supabase } from '@/lib/supabase'
 import type { AssistantConversation, AssistantMessage } from '@/lib/types'
 import { useAuth } from './useAuth'
-
-/**
- * supabase-js's `functions.invoke` throws a `FunctionsHttpError` with just the generic
- * message "Edge Function returned a non-2xx status code" for any non-2xx response — the
- * actual reason (e.g. "GEMINI_API_KEY is not configured", or the Gemini API's own error
- * text) is in the response body, on `error.context`. This unwraps it so it actually
- * reaches the UI instead of that opaque wrapper message.
- */
-async function describeFunctionError(error: unknown): Promise<string> {
-  const fallback = error instanceof Error ? error.message : 'Something went wrong.'
-  if (!(error instanceof FunctionsHttpError)) return fallback
-  try {
-    const body = await error.context.clone().json()
-    return typeof body?.error === 'string' ? body.error : fallback
-  } catch {
-    return fallback
-  }
-}
 
 export function conversationsQueryKey(userId: string | undefined) {
   return ['assistant_conversations', userId] as const

@@ -1,10 +1,12 @@
 import { Calculator, Plus, Wallet } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { DebtForm } from '@/components/planner/DebtForm'
 import { DebtRow } from '@/components/planner/DebtRow'
 import { DebtStrategyComparison } from '@/components/planner/DebtStrategyComparison'
 import { PlanCard } from '@/components/planner/PlanCard'
 import { PlanEditor } from '@/components/planner/PlanEditor'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Modal } from '@/components/ui/Modal'
 import { useCreateDebt, useDebts, useDeleteDebt, useUpdateDebt } from '@/hooks/useDebts'
 import {
@@ -32,7 +34,18 @@ export function PlannerPage() {
 
   const [planModal, setPlanModal] = useState<'new' | PlannerPlan | null>(null)
   const [debtModal, setDebtModal] = useState<'new' | Debt | null>(null)
+  const [planToDelete, setPlanToDelete] = useState<PlannerPlan | null>(null)
+  const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null)
   const [extraPayment, setExtraPayment] = useState(profile?.debt_extra_payment ?? 0)
+
+  // The saved extra payment may arrive after this page mounts; adopt it once, without overwriting typing.
+  const adoptedExtra = useRef(Boolean(profile))
+  useEffect(() => {
+    if (profile && !adoptedExtra.current) {
+      adoptedExtra.current = true
+      setExtraPayment(profile.debt_extra_payment ?? 0)
+    }
+  }, [profile])
 
   return (
     <div className="animate-enter space-y-8">
@@ -72,13 +85,13 @@ export function PlannerPage() {
             </button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {plans.map((plan) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
                 onEdit={() => setPlanModal(plan)}
-                onDelete={() => deletePlan.mutate(plan.id)}
+                onDelete={() => setPlanToDelete(plan)}
               />
             ))}
           </div>
@@ -102,7 +115,7 @@ export function PlannerPage() {
                 key={debt.id}
                 debt={debt}
                 onEdit={() => setDebtModal(debt)}
-                onDelete={() => deleteDebt.mutate(debt.id)}
+                onDelete={() => setDebtToDelete(debt)}
               />
             ))
           )}
@@ -118,13 +131,21 @@ export function PlannerPage() {
         <DebtStrategyComparison
           debts={debts}
           extraPayment={extraPayment}
-          onExtraPaymentChange={(value) => {
-            setExtraPayment(value)
-            updateProfile.mutate({ debt_extra_payment: value })
+          onExtraPaymentChange={setExtraPayment}
+          onExtraPaymentCommit={(value) => {
+            // Saved once editing finishes — not on every keystroke.
+            if (value !== (profile?.debt_extra_payment ?? 0)) {
+              updateProfile.mutate({ debt_extra_payment: value }, { onSuccess: () => toast.success('Extra payment saved') })
+            }
           }}
           chosenStrategy={profile?.debt_strategy ?? null}
           isSaving={updateProfile.isPending}
-          onChooseStrategy={(strategy) => updateProfile.mutate({ debt_strategy: strategy })}
+          onChooseStrategy={(strategy) =>
+            updateProfile.mutate(
+              { debt_strategy: strategy },
+              { onSuccess: () => toast.success(`${strategy === 'avalanche' ? 'Avalanche' : 'Snowball'} chosen as your strategy`) },
+            )
+          }
         />
       </section>
 
@@ -136,9 +157,22 @@ export function PlannerPage() {
             onCancel={() => setPlanModal(null)}
             onSubmit={(values) => {
               if (planModal === 'new') {
-                createPlan.mutate(values, { onSuccess: () => setPlanModal(null) })
+                createPlan.mutate(values, {
+                  onSuccess: () => {
+                    setPlanModal(null)
+                    toast.success(`${values.name} created`)
+                  },
+                })
               } else {
-                updatePlan.mutate({ id: planModal.id, patch: values }, { onSuccess: () => setPlanModal(null) })
+                updatePlan.mutate(
+                  { id: planModal.id, patch: values },
+                  {
+                    onSuccess: () => {
+                      setPlanModal(null)
+                      toast.success('Plan saved')
+                    },
+                  },
+                )
               }
             }}
           />
@@ -154,13 +188,70 @@ export function PlannerPage() {
             onCancel={() => setDebtModal(null)}
             onSubmit={(values) => {
               if (debtModal === 'new') {
-                createDebt.mutate(values, { onSuccess: () => setDebtModal(null) })
+                createDebt.mutate(values, {
+                  onSuccess: () => {
+                    setDebtModal(null)
+                    toast.success(`${values.name} added`)
+                  },
+                })
               } else {
-                updateDebt.mutate({ id: debtModal.id, patch: values }, { onSuccess: () => setDebtModal(null) })
+                updateDebt.mutate(
+                  { id: debtModal.id, patch: values },
+                  {
+                    onSuccess: () => {
+                      setDebtModal(null)
+                      toast.success('Debt saved')
+                    },
+                  },
+                )
               }
             }}
           />
         </Modal>
+      )}
+
+      {planToDelete && (
+        <ConfirmModal
+          title="Delete this plan?"
+          confirmLabel="Delete plan"
+          isPending={deletePlan.isPending}
+          onCancel={() => setPlanToDelete(null)}
+          onConfirm={() =>
+            deletePlan.mutate(planToDelete.id, {
+              onSuccess: () => {
+                setPlanToDelete(null)
+                toast.success(`${planToDelete.name} deleted`)
+              },
+            })
+          }
+        >
+          <p>
+            <span className="font-semibold text-foreground">{planToDelete.name}</span> and all its phases will be gone
+            for good — this can't be undone.
+          </p>
+        </ConfirmModal>
+      )}
+
+      {debtToDelete && (
+        <ConfirmModal
+          title="Delete this debt?"
+          confirmLabel="Delete debt"
+          isPending={deleteDebt.isPending}
+          onCancel={() => setDebtToDelete(null)}
+          onConfirm={() =>
+            deleteDebt.mutate(debtToDelete.id, {
+              onSuccess: () => {
+                setDebtToDelete(null)
+                toast.success(`${debtToDelete.name} deleted`)
+              },
+            })
+          }
+        >
+          <p>
+            <span className="font-semibold text-foreground">{debtToDelete.name}</span> will be removed from your payoff
+            plan. If you've paid it off — well done!
+          </p>
+        </ConfirmModal>
       )}
     </div>
   )

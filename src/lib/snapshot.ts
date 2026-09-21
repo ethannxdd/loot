@@ -11,12 +11,13 @@ import type { Expense, Profile } from './types'
 export async function upsertCurrentMonthSnapshot(profile: Profile, expenses: Expense[]) {
   const month = currentMonthKey()
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('monthly_snapshots')
     .select('id, locked_at')
     .eq('user_id', profile.id)
     .eq('month', month)
     .maybeSingle()
+  if (existingError) throw existingError
 
   if (existing?.locked_at) return // locked snapshots are frozen at month-close
 
@@ -30,7 +31,7 @@ export async function upsertCurrentMonthSnapshot(profile: Profile, expenses: Exp
     expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + monthlyEquivalent(e)
   }
 
-  await supabase.from('monthly_snapshots').upsert(
+  const { error } = await supabase.from('monthly_snapshots').upsert(
     {
       user_id: profile.id,
       month,
@@ -44,4 +45,5 @@ export async function upsertCurrentMonthSnapshot(profile: Profile, expenses: Exp
     },
     { onConflict: 'user_id,month' },
   )
+  if (error) throw error
 }

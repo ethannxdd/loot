@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { Loader2, Sparkles } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { CheckHistoryList } from '@/components/checker/CheckHistoryList'
@@ -6,6 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { useAffordabilityChecks, useCreateAffordabilityCheck } from '@/hooks/useAffordabilityChecks'
 import { useAddExpense, useExpenses } from '@/hooks/useExpenses'
 import { useGoals } from '@/hooks/useGoals'
+import { toast } from 'sonner'
 import { useProfile } from '@/hooks/useProfile'
 import {
   checkAffordability,
@@ -27,12 +29,26 @@ export function CheckerPage() {
   const [itemName, setItemName] = useState('')
   const [amount, setAmount] = useState('')
   const [isRecurring, setIsRecurring] = useState(false)
-  const [result, setResult] = useState<AffordabilityResult | null>(null)
+  // The result is pinned to the inputs it was run with, so editing the form afterwards can't silently
+  // change what "Add to expenses" pre-fills or whether it shows.
+  const [checked, setChecked] = useState<{
+    itemName: string
+    amount: number
+    isRecurring: boolean
+    result: AffordabilityResult
+  } | null>(null)
   const [addToExpensesOpen, setAddToExpensesOpen] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const result = checked?.result ?? null
 
   function runCheck(e: FormEvent) {
     e.preventDefault()
+    setFormError(null)
     if (!profile || !itemName.trim() || !amount) return
+    if (!(Number(amount) > 0)) {
+      setFormError('Enter an amount greater than zero.')
+      return
+    }
 
     const disposable = disposableIncome(profile.net_income, expenses)
     const safetyBuffer = safetyBufferAmount(profile.net_income, profile.safety_buffer_pct)
@@ -51,7 +67,12 @@ export function CheckerPage() {
       emergencyFundTarget: emergencyFund,
     })
 
-    setResult(verdictResult)
+    setChecked({
+      itemName: itemName.trim(),
+      amount: Number(amount),
+      isRecurring,
+      result: verdictResult,
+    })
     createCheck.mutate({
       item_name: itemName.trim(),
       amount: Number(amount),
@@ -64,7 +85,12 @@ export function CheckerPage() {
   }
 
   function handleAddToExpenses(values: NewExpense) {
-    addExpense.mutate(values, { onSuccess: () => setAddToExpensesOpen(false) })
+    addExpense.mutate(values, {
+      onSuccess: () => {
+        setAddToExpensesOpen(false)
+        toast.success(`${values.name} added to your expenses`)
+      },
+    })
   }
 
   const VerdictIcon = result ? VERDICT_META[result.verdict].icon : null
@@ -77,6 +103,17 @@ export function CheckerPage() {
           Ask "can I afford this?" and get a straight answer, grounded in your real numbers.
         </p>
       </header>
+
+      {profile && profile.net_income <= 0 && (
+        <div className="card flex flex-wrap items-center justify-between gap-3 border border-caution/30 text-sm">
+          <p className="text-muted-foreground">
+            You haven't set your income yet, so every check will come back negative.
+          </p>
+          <Link to="/settings" className="btn btn-ghost !h-8 !px-3 !text-xs">
+            Set income
+          </Link>
+        </div>
+      )}
 
       <form onSubmit={runCheck} className="card space-y-4">
         <div className="grid grid-cols-2 gap-3">
@@ -100,7 +137,8 @@ export function CheckerPage() {
               id="check-amount"
               type="number"
               inputMode="decimal"
-              min={0}
+              min={0.01}
+              step="any"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
@@ -130,6 +168,12 @@ export function CheckerPage() {
           </button>
         </div>
 
+        {formError && (
+          <p role="alert" className="text-xs text-alert">
+            {formError}
+          </p>
+        )}
+
         <button
           type="submit"
           disabled={createCheck.isPending || !profile}
@@ -157,7 +201,7 @@ export function CheckerPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">{result.reasoning}</p>
-          {isRecurring && result.verdict !== 'not-recommended' && (
+          {checked?.isRecurring && result.verdict !== 'not-recommended' && (
             <button
               type="button"
               onClick={() => setAddToExpensesOpen(true)}
@@ -179,7 +223,7 @@ export function CheckerPage() {
       {addToExpensesOpen && (
         <Modal title="Add to expenses" onClose={() => setAddToExpensesOpen(false)}>
           <ExpenseForm
-            initial={{ name: itemName, amount: Number(amount), frequency: 'monthly' }}
+            initial={{ name: checked?.itemName ?? itemName, amount: checked?.amount ?? Number(amount), frequency: 'monthly' }}
             onSubmit={handleAddToExpenses}
             onCancel={() => setAddToExpensesOpen(false)}
             isSubmitting={addExpense.isPending}

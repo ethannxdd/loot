@@ -15,7 +15,11 @@ function relativeTime(iso: string) {
   return `${days}d ago`
 }
 
-export function NotificationBell() {
+/**
+ * `align` is which edge of the bell the panel hangs from: "right" (default) opens leftwards, for a bell at the
+ * right of a bar (mobile); "left" opens rightwards, for a bell at the left of the screen (desktop sidebar).
+ */
+export function NotificationBell({ align = 'right' }: { align?: 'left' | 'right' }) {
   const { data: notifications = [] } = useNotifications()
   const markRead = useMarkNotificationRead()
   const markAllRead = useMarkAllNotificationsRead()
@@ -54,7 +58,11 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-40 w-80 max-w-[90vw] rounded-2xl border border-border bg-surface shadow-2xl">
+        <div
+          className={`absolute top-11 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface shadow-2xl ${
+            align === 'left' ? 'left-0' : 'right-0'
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
             <p className="text-sm font-bold">Notifications</p>
             {unreadCount > 0 && (

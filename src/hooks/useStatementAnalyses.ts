@@ -39,6 +39,16 @@ export function useSaveStatementAnalysis() {
       subscriptionItems: { service_name: string; amount: number; last_charged: string }[]
     }) => {
       if (!user) throw new Error('Not signed in')
+      // Saving the same bank + month again replaces the earlier copy instead of stacking duplicates.
+      if (input.statementMonth) {
+        const { error: clearError } = await supabase
+          .from('statement_analyses')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('bank', input.bank)
+          .eq('statement_month', input.statementMonth)
+        if (clearError) throw clearError
+      }
       const { data, error } = await supabase
         .from('statement_analyses')
         .insert({
@@ -54,6 +64,18 @@ export function useSaveStatementAnalysis() {
         .single()
       if (error) throw error
       return data as StatementAnalysis
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: statementAnalysesQueryKey(user?.id) }),
+  })
+}
+
+export function useDeleteStatementAnalysis() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('statement_analyses').delete().eq('id', id)
+      if (error) throw error
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: statementAnalysesQueryKey(user?.id) }),
   })

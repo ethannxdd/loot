@@ -14,11 +14,14 @@ export function CategoryTrendsTab({ snapshots }: { snapshots: MonthlySnapshot[] 
     return EXPENSE_CATEGORIES.filter((c) => seen.has(c))
   }, [snapshots])
 
-  const [category, setCategory] = useState<ExpenseCategory | ''>(categoriesWithData[0] ?? '')
+  // The snapshots may still be loading when this mounts, so the list of categories changes underneath us —
+  // fall back to the first available category whenever the chosen one isn't in it.
+  const [chosen, setChosen] = useState<ExpenseCategory | ''>('')
+  const category: ExpenseCategory | '' = chosen && categoriesWithData.includes(chosen) ? chosen : (categoriesWithData[0] ?? '')
 
   const data = snapshots.map((s) => ({
     month: monthLabel(s.month),
-    amount: Math.round(s.expenses_by_category?.[category] ?? 0),
+    amount: Math.round((category && s.expenses_by_category?.[category]) || 0),
   }))
 
   if (categoriesWithData.length === 0) {
@@ -33,7 +36,7 @@ export function CategoryTrendsTab({ snapshots }: { snapshots: MonthlySnapshot[] 
     <div className="card space-y-4">
       <select
         value={category}
-        onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+        onChange={(e) => setChosen(e.target.value as ExpenseCategory)}
         className="!w-auto"
       >
         {categoriesWithData.map((c) => (
@@ -57,7 +60,7 @@ export function CategoryTrendsTab({ snapshots }: { snapshots: MonthlySnapshot[] 
                 fontSize: 12,
               }}
             />
-            <Line type="monotone" dataKey="amount" stroke="#5BC0EB" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="amount" name={category ? categoryLabel(category) : 'Amount'} stroke="#5BC0EB" strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>

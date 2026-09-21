@@ -60,27 +60,38 @@ export function useMarkAllNotificationsRead() {
  */
 export function useGenerateNotifications(inputs: NotificationInputs, ready: boolean) {
   const { user } = useAuth()
-  const { data: existing = [] } = useNotifications()
+  const { data: existing, isSuccess: existingLoaded } = useNotifications()
   const queryClient = useQueryClient()
   const lastRun = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!user || !ready) return
-    const signature = JSON.stringify(inputs)
+    // Wait until the existing notifications have actually loaded — generating against an empty
+    // list would try to re-insert rows that already exist.
+    if (!user || !ready || !existingLoaded || !existing) return
+    const signature = `${user.id}|${JSON.stringify(inputs)}`
     if (lastRun.current === signature) return
-    lastRun.current = signature
 
     const candidates = generateNotificationCandidates(inputs)
     const existingKeys = new Set(existing.map((n) => n.dedupe_key))
     const toInsert = candidates.filter((c) => !existingKeys.has(c.dedupe_key))
-    if (toInsert.length === 0) return
+    if (toInsert.length === 0) {
+      lastRun.current = signature
+      return
+    }
 
+    // `ignoreDuplicates` makes this idempotent even if two tabs (or a re-render) race each other:
+    // a candidate that already exists is skipped, never turned into a failed batch.
     supabase
       .from('notifications')
-      .insert(toInsert.map((c) => ({ ...c, user_id: user.id })))
+      .upsert(
+        toInsert.map((c) => ({ ...c, user_id: user.id })),
+        { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true },
+      )
       .then(({ error }) => {
-        if (!error) queryClient.invalidateQueries({ queryKey: notificationsQueryKey(user.id) })
+        if (error) return // leave lastRun unset so the next state change retries
+        lastRun.current = signature
+        void queryClient.invalidateQueries({ queryKey: notificationsQueryKey(user.id) })
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, ready, JSON.stringify(inputs), existing.length])
+  }, [user?.id, ready, existingLoaded, existing?.length, JSON.stringify(inputs)])
 }

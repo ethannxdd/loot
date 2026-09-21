@@ -39,6 +39,9 @@ export function TaxEstimateCard({ estimate }: { estimate: TaxEstimate }) {
       {estimate.travelDeduction > 0 && (
         <Row label="Travel deduction" value={`− ${formatCurrency(estimate.travelDeduction)}`} muted />
       )}
+      {estimate.professionalDevelopmentDeduction > 0 && (
+        <Row label="Professional development" value={`− ${formatCurrency(estimate.professionalDevelopmentDeduction)}`} muted />
+      )}
       <div className="border-t border-hairline" />
       <Row label="Taxable income" value={formatCurrency(estimate.taxableIncome)} bold />
       <Row label="Gross tax (per SARS tables)" value={formatCurrency(estimate.grossTax)} />
@@ -50,20 +53,29 @@ export function TaxEstimateCard({ estimate }: { estimate: TaxEstimate }) {
       <Row label="Annual tax liability" value={formatCurrency(estimate.annualLiability)} bold />
       <Row label="Monthly PAYE equivalent" value={formatCurrency(estimate.monthlyPaye)} />
       <Row label="Effective tax rate" value={`${estimate.effectiveRate.toFixed(1)}%`} />
+      {estimate.marginalRate > 0 && <Row label="Marginal rate (on your next rand)" value={`${estimate.marginalRate.toFixed(0)}%`} muted />}
+      {estimate.payeWithheld > 0 && <Row label="PAYE assumed withheld by your employer" value={formatCurrency(estimate.payeWithheld)} muted />}
 
       <div className="mt-3 flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-3">
         <span className="flex items-center gap-1.5 text-sm font-semibold">
-          {estimate.refundOrOweEstimate >= 0 ? 'Estimated refund' : 'Estimated amount owing'}
+          {estimate.payeAssumed
+            ? estimate.refundOrOweEstimate > 0
+              ? 'Estimated refund from your deductions'
+              : 'Estimated tax on top of PAYE'
+            : 'Estimated tax to pay for the year'}
         </span>
-        <span className={`tnum text-base font-bold ${estimate.refundOrOweEstimate >= 0 ? 'text-primary' : 'text-alert'}`}>
+        <span className={`tnum text-base font-bold ${estimate.refundOrOweEstimate > 0 ? 'text-primary' : estimate.refundOrOweEstimate < 0 ? 'text-alert' : ''}`}>
           {formatCurrency(Math.abs(estimate.refundOrOweEstimate))}
         </span>
       </div>
 
       <p className="flex items-start gap-1.5 pt-2 text-xs text-text-subtle">
         <HelpCircle size={13} strokeWidth={1.75} className="mt-0.5 shrink-0" />
-        This is an estimate based on SARS's published tax tables — it isn't a substitute for advice from a
-        registered tax practitioner or your actual eFiling assessment.
+        An estimate from SARS's published tax tables.
+        {estimate.payeAssumed
+          ? ' It assumes your payroll deducted PAYE on your full salary without the deductions tracked below, so those come back as a refund.'
+          : ' No PAYE is assumed, so this is the tax you would pay yourself (through provisional tax or at assessment).'}{' '}
+        It isn't a substitute for a registered tax practitioner or your actual eFiling assessment.
       </p>
     </div>
   )

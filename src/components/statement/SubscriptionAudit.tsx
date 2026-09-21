@@ -1,5 +1,6 @@
-import { Ban, RotateCcw } from 'lucide-react'
-import { useToggleSubscriptionCancel } from '@/hooks/useSubscriptionReviews'
+import { Ban, RotateCcw, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useDeleteSubscription, useToggleSubscriptionCancel } from '@/hooks/useSubscriptionReviews'
 import { formatCurrency } from '@/lib/utils'
 import type { SubscriptionReview } from '@/lib/types'
 
@@ -9,6 +10,7 @@ interface SubscriptionAuditProps {
 
 export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
   const toggleCancel = useToggleSubscriptionCancel()
+  const remove = useDeleteSubscription()
 
   if (subscriptions.length === 0) {
     return null
@@ -40,7 +42,12 @@ export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
               <span className="tnum text-sm">{formatCurrency(sub.amount)}</span>
               <button
                 type="button"
-                onClick={() => toggleCancel.mutate({ id: sub.id, markedCancel: !sub.marked_cancel })}
+                onClick={() =>
+                  toggleCancel.mutate(
+                    { id: sub.id, markedCancel: !sub.marked_cancel },
+                    { onSuccess: () => toast(sub.marked_cancel ? `Keeping ${sub.service_name}` : `${sub.service_name} marked for cancellation`) },
+                  )
+                }
                 className="btn btn-ghost !px-2.5 !py-1.5 text-xs"
               >
                 {sub.marked_cancel ? (
@@ -52,6 +59,16 @@ export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
                     <Ban size={12} strokeWidth={1.75} /> Cancel
                   </>
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  remove.mutate(sub.id, { onSuccess: () => toast.success(`${sub.service_name} removed from the audit`) })
+                }
+                aria-label={`Remove ${sub.service_name}`}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert"
+              >
+                <Trash2 size={13} strokeWidth={1.75} />
               </button>
             </div>
           </div>

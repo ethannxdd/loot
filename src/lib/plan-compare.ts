@@ -7,6 +7,9 @@ export interface PlanTotals {
   totalNet: number
   totalExpenses: number
   totalLeftover: number
+  phaseCount: number
+  /** Average monthly leftover per phase — comparable between plans with different numbers of phases. */
+  avgLeftover: number
 }
 
 export function computePlanTotals(plan: PlannerPlan): PlanTotals {
@@ -21,10 +24,11 @@ export function computePlanTotals(plan: PlannerPlan): PlanTotals {
     totalExpenses += computed.totalExpenses
     totalLeftover += computed.leftover
   }
-  return { planId: plan.id, totalGross, totalNet, totalExpenses, totalLeftover }
+  const phaseCount = plan.phases.length
+  return { planId: plan.id, totalGross, totalNet, totalExpenses, totalLeftover, phaseCount, avgLeftover: phaseCount > 0 ? totalLeftover / phaseCount : 0 }
 }
 
-export type CompareMetric = 'tax_rate_pct' | 'totalGross' | 'totalNet' | 'totalExpenses' | 'totalLeftover'
+export type CompareMetric = 'tax_rate_pct' | 'totalGross' | 'totalNet' | 'totalExpenses' | 'totalLeftover' | 'avgLeftover'
 
 /** true = lower value wins (tax rate, expenses); false = higher value wins. */
 export const METRIC_LOWER_IS_BETTER: Record<CompareMetric, boolean> = {
@@ -33,6 +37,7 @@ export const METRIC_LOWER_IS_BETTER: Record<CompareMetric, boolean> = {
   totalNet: false,
   totalExpenses: true,
   totalLeftover: false,
+  avgLeftover: false,
 }
 
 /** Returns the plan id(s) with the winning value for a metric (ties all win). */

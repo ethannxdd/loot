@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Sparkles, Wallet } from 'lucide-react'
+import { Sparkles, Users, Wallet } from 'lucide-react'
 import { BriefingCard } from '@/components/dashboard/BriefingCard'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { Lootflow } from '@/components/dashboard/Lootflow'
@@ -11,29 +11,37 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { UpcomingDebits } from '@/components/dashboard/UpcomingDebits'
 import { WhereYourLootGoes } from '@/components/dashboard/WhereYourLootGoes'
 import { useExpenses } from '@/hooks/useExpenses'
+import { useHouseholdView } from '@/hooks/useHousehold'
 import { useProfile } from '@/hooks/useProfile'
 import { useSnapshots } from '@/hooks/useSnapshots'
-import { disposableIncome, healthLevel, savingsRate, totalMonthlyExpenses } from '@/lib/money'
+import { disposableIncome, healthLevel, previousMonthSnapshot, savingsRate, totalMonthlyExpenses } from '@/lib/money'
 import { getGreeting } from '@/lib/utils'
 
 export function DashboardPage() {
   const { data: profile } = useProfile()
-  const { data: expenses = [] } = useExpenses()
+  const household = useHouseholdView()
   const { data: snapshots = [] } = useSnapshots(6)
+  const { data: ownExpenses = [] } = useExpenses()
 
+  // In household view these are the combined figures for everyone; otherwise just the user's own.
+  const expenses = household.combinedExpenses
   const firstName = profile?.display_name?.split(' ')[0] ?? 'there'
-  const netIncome = profile?.net_income ?? 0
+  const netIncome = household.netIncome
   const totalExpenses = totalMonthlyExpenses(expenses)
   const disposable = disposableIncome(netIncome, expenses)
   const rate = savingsRate(disposable, netIncome)
   const health = healthLevel(rate)
 
-  const previous = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null
+  // Month-on-month deltas compare against the last EARLIER month, and only for the individual view —
+  // snapshots are per-person, so they can't be compared against a combined household figure.
+  const previous = household.active ? null : previousMonthSnapshot(snapshots)
   const disposableDelta = previous ? disposable - previous.disposable_income : null
   const expensesDelta = previous ? totalExpenses - previous.total_expenses : null
   const incomeDelta = previous ? netIncome - previous.net_income : null
+  const sparkline = (pick: (s: (typeof snapshots)[number]) => number) => (household.active ? [] : snapshots.map(pick))
 
-  const isEmpty = expenses.filter((e) => !e.deleted_at).length === 0
+  const isEmpty = expenses.length === 0
+  const needsIncome = profile !== undefined && profile.net_income <= 0
 
   return (
     <div className="animate-enter space-y-6">
@@ -46,12 +54,49 @@ export function DashboardPage() {
             Here&apos;s what&apos;s happening with your loot.
           </p>
         </div>
-        <div className="flex gap-2.5">
+        <div className="flex flex-wrap gap-2.5">
+          {household.available && (
+            <button
+              type="button"
+              onClick={household.toggle}
+              disabled={household.isToggling}
+              aria-pressed={household.active}
+              className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+                household.active
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Users size={14} strokeWidth={1.75} />
+              Household view
+            </button>
+          )}
           <Link to="/checker" className="btn btn-secondary">
             Run a check
           </Link>
+          <Link to="/expenses" search={{ add: true }} className="btn btn-primary">
+            Add expense
+          </Link>
         </div>
       </header>
+
+      {household.active && (
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Showing combined figures for you{household.partnerNames.length > 0 && ` and ${household.partnerNames.join(', ')}`}.
+          Month-on-month trends stay individual.
+        </p>
+      )}
+
+      {needsIncome && (
+        <div className="card flex flex-wrap items-center justify-between gap-3 border border-caution/30">
+          <p className="text-sm text-muted-foreground">
+            Your income is set to zero, so Loot can't work out what's left over.
+          </p>
+          <Link to="/settings" className="btn btn-ghost !h-8 !px-3 !text-xs">
+            Set your income
+          </Link>
+        </div>
+      )}
 
       {isEmpty ? (
         <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
@@ -65,20 +110,20 @@ export function DashboardPage() {
               you have left after everything is accounted for.
             </p>
           </div>
-          <Link to="/expenses" className="btn btn-primary">
-            Add expense
-          </Link>
+          <div className="w-full max-w-xs text-left">
+            <QuickAddExpense />
+          </div>
         </div>
       ) : (
         <>
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <div className="space-y-5 lg:col-span-2">
-              <div className="grid gap-4 sm:grid-cols-3" data-tutorial="dashboard-stats">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" data-tutorial="dashboard-stats">
                 <StatCard
                   label="Available loot"
                   value={disposable}
                   delta={disposableDelta}
-                  sparkline={snapshots.map((s) => s.disposable_income)}
+                  sparkline={sparkline((s) => s.disposable_income)}
                   color="#C1FE72"
                 />
                 <StatCard
@@ -86,19 +131,19 @@ export function DashboardPage() {
                   value={totalExpenses}
                   delta={expensesDelta}
                   invertDeltaColor
-                  sparkline={snapshots.map((s) => s.total_expenses)}
+                  sparkline={sparkline((s) => s.total_expenses)}
                   color="#AF72FE"
                 />
                 <StatCard
                   label="Loot coming in"
                   value={netIncome}
                   delta={incomeDelta}
-                  sparkline={snapshots.map((s) => s.net_income)}
+                  sparkline={sparkline((s) => s.net_income)}
                   color="#5BC0EB"
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <WhereYourLootGoes expenses={expenses} />
                 <Lootflow
                   netIncome={netIncome}
@@ -112,16 +157,17 @@ export function DashboardPage() {
 
               <div className="space-y-3">
                 <div className="overline px-1">Advanced</div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <LootScoreCard />
-                  <ForecastCard snapshots={snapshots} expenses={expenses} netIncome={netIncome} />
+                  {/* Forecast, score, close and briefing are personal — they always use the user's own numbers. */}
+                  <ForecastCard snapshots={snapshots} expenses={ownExpenses} netIncome={profile?.net_income ?? 0} />
                   <MonthlyCloseCard />
                   <BriefingCard snapshots={snapshots} />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-5" data-tutorial="dashboard-quick-actions">
+            <div className="space-y-5 self-start" data-tutorial="dashboard-quick-actions">
               <Link
                 to="/checker"
                 className="card-purple card-hover flex items-center gap-3 px-5 py-4"

@@ -26,13 +26,14 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const rows = useMemo(() => {
     if (!current) return []
     return [
-      { label: 'Net income', key: 'net_income' as const },
-      { label: 'Total expenses', key: 'total_expenses' as const },
-      { label: 'Disposable income', key: 'disposable_income' as const },
-    ].map(({ label, key }) => ({
+      { label: 'Net income', key: 'net_income' as const, upIsGood: true },
+      { label: 'Total expenses', key: 'total_expenses' as const, upIsGood: false },
+      { label: 'Disposable income', key: 'disposable_income' as const, upIsGood: true },
+    ].map(({ label, key, upIsGood }) => ({
       label,
       value: current[key],
       delta: previous ? current[key] - previous[key] : null,
+      upIsGood,
     }))
   }, [current, previous])
 
@@ -75,8 +76,8 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
                   fontSize: 12,
                 }}
               />
-              <Line type="monotone" dataKey="disposable" name="Disposable" stroke="#C1FE72" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#AF72FE" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="disposable" name="Disposable" stroke="#C1FE72" strokeWidth={2} dot={visible.length < 3} />
+              <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#AF72FE" strokeWidth={2} dot={visible.length < 3} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -100,6 +101,7 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
               ))}
           </select>
         </div>
+        {!previous && <p className="text-xs text-text-muted">Loot needs two months of data to show changes.</p>}
         <div className="space-y-2">
           {rows.map((row) => (
             <div key={row.label} className="flex items-center justify-between text-sm">
@@ -107,8 +109,12 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
               <div className="flex items-center gap-2">
                 <span className="tnum font-semibold">{formatCurrency(row.value)}</span>
                 {row.delta !== null && (
-                  <span className={`text-xs ${row.delta >= 0 ? 'text-primary' : 'text-alert'}`}>
-                    {row.delta >= 0 ? '+' : ''}
+                  <span
+                    className={`text-xs ${
+                      Math.round(row.delta) === 0 ? 'text-text-muted' : row.delta > 0 === row.upIsGood ? 'text-primary' : 'text-alert'
+                    }`}
+                  >
+                    {row.delta > 0 ? '+' : ''}
                     {formatCurrency(row.delta)}
                   </span>
                 )}

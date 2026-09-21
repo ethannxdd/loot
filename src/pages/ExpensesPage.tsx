@@ -1,7 +1,10 @@
-import { ChevronDown, Plus, Users, Wallet } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+import { ChevronDown, Plus, Search, Users, Wallet } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { ExpenseForm } from '@/components/expenses/ExpenseForm'
 import { ExpenseRow } from '@/components/expenses/ExpenseRow'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Modal } from '@/components/ui/Modal'
 import {
   useAddExpense,
@@ -11,15 +14,16 @@ import {
   useSoftDeleteExpense,
   useUpdateExpense,
 } from '@/hooks/useExpenses'
-import { useHouseholdExpenses, useMyHousehold } from '@/hooks/useHousehold'
-import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
+import { useHouseholdView } from '@/hooks/useHousehold'
+import { categoryLabel } from '@/lib/categories'
+import { monthlyEquivalent, totalMonthlyExpenses } from '@/lib/money'
 import type { Expense, NewExpense } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 
 export function ExpensesPage() {
-  const { data: profile } = useProfile()
-  const updateProfile = useUpdateProfile()
-  const { data: household } = useMyHousehold()
+  const search = useSearch({ strict: false }) as { add?: boolean }
+  const navigate = useNavigate()
+  const household = useHouseholdView()
   const { data: expenses = [], isLoading } = useExpenses()
   const addExpense = useAddExpense()
   const updateExpense = useUpdateExpense()
@@ -29,34 +33,112 @@ export function ExpensesPage() {
 
   const [modal, setModal] = useState<'add' | { edit: Expense } | null>(null)
   const [binOpen, setBinOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [confirmForever, setConfirmForever] = useState<Expense | null>(null)
 
-  const householdViewOn = Boolean(profile?.household_view && household)
-  const { rows: householdRows, combinedTotal } = useHouseholdExpenses(
-    householdViewOn ? household!.members.map((m) => m.user_id) : [],
-    expenses
-  )
+  // Deep link: /expenses?add=1 opens the add dialog, then tidies the URL so a refresh doesn't reopen it.
+  useEffect(() => {
+    if (search.add) {
+      setModal('add')
+      void navigate({ to: '/expenses', search: {}, replace: true })
+    }
+  }, [search.add, navigate])
+
+  const q = query.trim().toLowerCase()
+  const matches = (e: Expense) =>
+    !q || e.name.toLowerCase().includes(q) || categoryLabel(e.category).toLowerCase().includes(q)
 
   const { fixed, variable, removed } = useMemo(() => {
     const active = expenses.filter((e) => !e.deleted_at)
     return {
-      fixed: active.filter((e) => e.is_fixed),
-      variable: active.filter((e) => !e.is_fixed),
+      fixed: active.filter((e) => e.is_fixed && matches(e)),
+      variable: active.filter((e) => !e.is_fixed && matches(e)),
       removed: expenses.filter((e) => e.deleted_at),
     }
-  }, [expenses])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expenses, q])
 
-  const householdFixed = householdRows.filter((r) => !r.expense.deleted_at && r.expense.is_fixed)
-  const householdVariable = householdRows.filter((r) => !r.expense.deleted_at && !r.expense.is_fixed)
+  const householdFixed = household.rows.filter((r) => !r.expense.deleted_at && r.expense.is_fixed && matches(r.expense))
+  const householdVariable = household.rows.filter((r) => !r.expense.deleted_at && !r.expense.is_fixed && matches(r.expense))
+
+  const sum = (list: Expense[]) => list.reduce((total, e) => total + monthlyEquivalent(e), 0)
+  const totalActive = expenses.filter((e) => !e.deleted_at)
+  const combinedTotal = totalMonthlyExpenses(household.combinedExpenses)
 
   function handleAdd(values: NewExpense) {
-    addExpense.mutate(values, { onSuccess: () => setModal(null) })
+    addExpense.mutate(values, {
+      onSuccess: () => {
+        setModal(null)
+        toast.success(`${values.name} added`)
+      },
+    })
   }
 
   function handleUpdate(id: string, values: NewExpense) {
-    updateExpense.mutate({ id, patch: values }, { onSuccess: () => setModal(null) })
+    updateExpense.mutate(
+      { id, patch: values },
+      {
+        onSuccess: () => {
+          setModal(null)
+          toast.success('Expense updated')
+        },
+      },
+    )
   }
 
-  const isEmpty = !isLoading && fixed.length === 0 && variable.length === 0
+  function handleRemove(expense: Expense) {
+    softDelete.mutate(expense.id, {
+      onSuccess: () =>
+        toast(`${expense.name} removed`, {
+          action: { label: 'Undo', onClick: () => restore.mutate(expense.id) },
+          duration: 6000,
+        }),
+    })
+  }
+
+  function handleDeleteForever() {
+    if (!confirmForever) return
+    hardDelete.mutate(confirmForever.id, {
+      onSuccess: () => {
+        toast.success(`${confirmForever.name} deleted permanently`)
+        setConfirmForever(null)
+      },
+    })
+  }
+
+  const isEmpty = !isLoading && totalActive.length === 0
+  const noMatches = !isEmpty && q && fixed.length + variable.length + householdFixed.length + householdVariable.length === 0
+
+  const renderRows = (
+    plain: Expense[],
+    shared: typeof householdFixed,
+    emptyText: string,
+  ) => {
+    if (household.active) {
+      if (shared.length === 0) return <p className="px-2 py-3 text-sm text-text-muted">{emptyText}</p>
+      return shared.map(({ expense, ownerLabel, isMine }) => (
+        <ExpenseRow
+          key={expense.id}
+          expense={expense}
+          ownerLabel={ownerLabel}
+          readOnly={!isMine}
+          onEdit={() => setModal({ edit: expense })}
+          onDelete={() => handleRemove(expense)}
+          isPending={softDelete.isPending}
+        />
+      ))
+    }
+    if (plain.length === 0) return <p className="px-2 py-3 text-sm text-text-muted">{emptyText}</p>
+    return plain.map((expense) => (
+      <ExpenseRow
+        key={expense.id}
+        expense={expense}
+        onEdit={() => setModal({ edit: expense })}
+        onDelete={() => handleRemove(expense)}
+        isPending={softDelete.isPending}
+      />
+    ))
+  }
 
   return (
     <div className="animate-enter space-y-6">
@@ -68,12 +150,16 @@ export function ExpensesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          {household && (
+          {household.available && (
             <button
               type="button"
-              onClick={() => updateProfile.mutate({ household_view: !profile?.household_view })}
+              onClick={household.toggle}
+              disabled={household.isToggling}
+              aria-pressed={household.active}
               className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
-                householdViewOn ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+                household.active
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'
               }`}
             >
               <Users size={14} strokeWidth={1.75} />
@@ -87,9 +173,11 @@ export function ExpensesPage() {
         </div>
       </header>
 
-      {householdViewOn && (
+      {household.active && (
         <div className="card-purple flex items-center justify-between px-5 py-4">
-          <p className="text-sm font-semibold">Combined household expenses</p>
+          <p className="text-sm font-semibold">
+            Combined household expenses{household.partnerNames.length > 0 && ` · you + ${household.partnerNames.join(', ')}`}
+          </p>
           <p className="tnum text-lg font-bold">{formatCurrency(combinedTotal)}/mo</p>
         </div>
       )}
@@ -110,73 +198,54 @@ export function ExpensesPage() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className="card space-y-1">
-            <div className="overline mb-1 px-2">Fixed</div>
-            {householdViewOn ? (
-              householdFixed.length === 0 ? (
-                <p className="px-2 py-3 text-sm text-text-muted">No fixed expenses yet.</p>
-              ) : (
-                householdFixed.map(({ expense, ownerLabel, isMine }) => (
-                  <ExpenseRow
-                    key={expense.id}
-                    expense={expense}
-                    ownerLabel={ownerLabel}
-                    readOnly={!isMine}
-                    onEdit={() => setModal({ edit: expense })}
-                    onDelete={() => softDelete.mutate(expense.id)}
-                    isPending={softDelete.isPending}
-                  />
-                ))
-              )
-            ) : fixed.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-text-muted">No fixed expenses yet.</p>
-            ) : (
-              fixed.map((expense) => (
-                <ExpenseRow
-                  key={expense.id}
-                  expense={expense}
-                  onEdit={() => setModal({ edit: expense })}
-                  onDelete={() => softDelete.mutate(expense.id)}
-                  isPending={softDelete.isPending}
-                />
-              ))
-            )}
-          </section>
+        <>
+          <div className="relative max-w-sm">
+            <Search
+              size={15}
+              strokeWidth={1.75}
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-text-muted"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search expenses"
+              aria-label="Search expenses"
+              className="!pl-9"
+            />
+          </div>
 
-          <section className="card space-y-1">
-            <div className="overline mb-1 px-2">Variable</div>
-            {householdViewOn ? (
-              householdVariable.length === 0 ? (
-                <p className="px-2 py-3 text-sm text-text-muted">No variable expenses yet.</p>
-              ) : (
-                householdVariable.map(({ expense, ownerLabel, isMine }) => (
-                  <ExpenseRow
-                    key={expense.id}
-                    expense={expense}
-                    ownerLabel={ownerLabel}
-                    readOnly={!isMine}
-                    onEdit={() => setModal({ edit: expense })}
-                    onDelete={() => softDelete.mutate(expense.id)}
-                    isPending={softDelete.isPending}
-                  />
-                ))
-              )
-            ) : variable.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-text-muted">No variable expenses yet.</p>
-            ) : (
-              variable.map((expense) => (
-                <ExpenseRow
-                  key={expense.id}
-                  expense={expense}
-                  onEdit={() => setModal({ edit: expense })}
-                  onDelete={() => softDelete.mutate(expense.id)}
-                  isPending={softDelete.isPending}
-                />
-              ))
-            )}
-          </section>
-        </div>
+          {noMatches ? (
+            <div className="card py-10 text-center text-sm text-muted-foreground">
+              No expenses match &ldquo;{query}&rdquo;.{' '}
+              <button type="button" onClick={() => setQuery('')} className="font-semibold text-primary">
+                Clear search
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <section className="card space-y-1">
+                <div className="mb-1 flex items-baseline justify-between px-2">
+                  <div className="overline">Fixed</div>
+                  <div className="tnum text-xs text-text-muted">
+                    {formatCurrency(sum(household.active ? householdFixed.map((r) => r.expense) : fixed))}/mo
+                  </div>
+                </div>
+                {renderRows(fixed, householdFixed, 'No fixed expenses yet.')}
+              </section>
+
+              <section className="card space-y-1">
+                <div className="mb-1 flex items-baseline justify-between px-2">
+                  <div className="overline">Variable</div>
+                  <div className="tnum text-xs text-text-muted">
+                    {formatCurrency(sum(household.active ? householdVariable.map((r) => r.expense) : variable))}/mo
+                  </div>
+                </div>
+                {renderRows(variable, householdVariable, 'No variable expenses yet.')}
+              </section>
+            </div>
+          )}
+        </>
       )}
 
       {removed.length > 0 && (
@@ -184,6 +253,7 @@ export function ExpensesPage() {
           <button
             type="button"
             onClick={() => setBinOpen((v) => !v)}
+            aria-expanded={binOpen}
             className="flex w-full items-center justify-between text-left"
           >
             <span className="overline">Recently removed ({removed.length})</span>
@@ -198,7 +268,8 @@ export function ExpensesPage() {
                 <ExpenseRow
                   key={expense.id}
                   expense={expense}
-                  onRestore={() => restore.mutate(expense.id)}
+                  onRestore={() => restore.mutate(expense.id, { onSuccess: () => toast.success(`${expense.name} restored`) })}
+                  onDeleteForever={() => setConfirmForever(expense)}
                   isPending={restore.isPending || hardDelete.isPending}
                 />
               ))}
@@ -228,6 +299,21 @@ export function ExpensesPage() {
             submitLabel="Save changes"
           />
         </Modal>
+      )}
+
+      {confirmForever && (
+        <ConfirmModal
+          title="Delete permanently?"
+          confirmLabel="Delete permanently"
+          isPending={hardDelete.isPending}
+          onConfirm={handleDeleteForever}
+          onCancel={() => setConfirmForever(null)}
+        >
+          <p>
+            <span className="font-semibold text-foreground">{confirmForever.name}</span> will be gone for good — this
+            can't be undone.
+          </p>
+        </ConfirmModal>
       )}
     </div>
   )

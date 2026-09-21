@@ -87,8 +87,9 @@ export function UploadZone({ bank, onBankChange, onFile, isProcessing, error }: 
       )}
 
       <p className="text-xs text-text-subtle">
-        Your statement is parsed in your browser and never uploaded anywhere — only the category totals from your
-        results are saved to your Loot account.
+        Your statement is parsed in your browser and never uploaded anywhere. Only if you press “Save this analysis”
+        are the category totals (and the names of any subscriptions found) saved to your Loot account — never the
+        transactions themselves.
       </p>
     </div>
   )

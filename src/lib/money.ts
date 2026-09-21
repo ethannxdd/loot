@@ -1,4 +1,5 @@
 import type { AffordabilityVerdict, Expense } from './types'
+import { formatCurrency } from './utils'
 
 /** Converts any expense frequency to its monthly-equivalent amount. */
 export function monthlyEquivalent(expense: Pick<Expense, 'amount' | 'frequency'>): number {
@@ -103,16 +104,23 @@ export function checkAffordability(params: {
   const remainingSavings = savingsBalance - amount
 
   if (savingsBalance === 0 && emergencyFundTarget === 0) {
-    // No savings data recorded yet — fall back to a disposable-income read.
-    if (amount <= disposable) {
+    // No savings data recorded yet — fall back to a cash-flow read against this month's disposable income
+    // and the safety buffer Loot keeps untouched.
+    if (amount <= disposable - safetyBuffer) {
       return {
         verdict: 'comfortable',
-        reasoning: `${itemName} costs less than one month's disposable income (${formatZAR(disposable)}). No savings balance on file yet, so this check is based on cash flow alone.`,
+        reasoning: `${itemName} fits inside this month's disposable income (${formatZAR(disposable)}) and still leaves your ${formatZAR(safetyBuffer)} safety buffer intact. No savings balance on file yet, so this check is based on cash flow alone.`,
+      }
+    }
+    if (amount <= disposable) {
+      return {
+        verdict: 'tight',
+        reasoning: `${itemName} fits inside this month's disposable income (${formatZAR(disposable)}), but it would dip ${formatZAR(amount - (disposable - safetyBuffer))} into your safety buffer. No savings balance on file yet, so this check is based on cash flow alone.`,
       }
     }
     return {
-      verdict: 'tight',
-      reasoning: `${itemName} costs more than a month's disposable income (${formatZAR(disposable)}). No savings balance on file yet — add one in Settings for a sharper once-off check.`,
+      verdict: 'not-recommended',
+      reasoning: `${itemName} costs more than this month's disposable income (${formatZAR(disposable)}) and there are no savings on file to cover the gap. Set a savings goal on the Goals page for a sharper once-off check.`,
     }
   }
 
@@ -135,11 +143,34 @@ export function checkAffordability(params: {
 }
 
 function formatZAR(amount: number): string {
-  return new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR',
-    maximumFractionDigits: 0,
-  }).format(amount)
+  // Named for history — formats in the user's active currency (see setActiveCurrency).
+  return formatCurrency(amount)
+}
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+/**
+ * The next time an expense with this due day falls — this month if it hasn't passed yet, otherwise next
+ * month. A due day past the end of a short month (31 in February) lands on that month's last day.
+ */
+export function nextDueDate(dueDay: number, from = new Date()): Date {
+  const today = startOfDay(from)
+  const inMonth = (year: number, month: number) => {
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    return new Date(year, month, Math.min(dueDay, lastDay))
+  }
+  const thisMonth = inMonth(today.getFullYear(), today.getMonth())
+  if (thisMonth.getTime() >= today.getTime()) return thisMonth
+  return inMonth(today.getFullYear(), today.getMonth() + 1)
+}
+
+/** Whole calendar days from today until the next due date (0 = today). */
+export function daysUntilNextDue(dueDay: number, from = new Date()): number {
+  return Math.round((nextDueDate(dueDay, from).getTime() - startOfDay(from).getTime()) / MS_PER_DAY)
 }
 
 /** Current month key in 'YYYY-MM-01' form, matching monthly_snapshots.month. */
@@ -173,4 +204,30 @@ export function monthLabel(monthKey: string): string {
     month: 'short',
     year: 'numeric',
   })
+}
+
+/**
+ * The most recent snapshot that belongs to an EARLIER month than `from`'s — the fair comparison point for
+ * "vs last month". (The snapshots list may or may not already contain the current month, so "second to
+ * last" is not reliable.)
+ */
+export function previousMonthSnapshot<T extends { month: string }>(snapshots: T[], from = new Date()): T | null {
+  const current = currentMonthKey(from)
+  const earlier = snapshots.filter((s) => s.month < current).sort((a, b) => a.month.localeCompare(b.month))
+  return earlier.length > 0 ? earlier[earlier.length - 1] : null
+}
+
+/** Monthly-equivalent of an income amount paid at `frequency` (weekly ×52÷12, fortnightly ×26÷12, yearly ÷12). */
+export function monthlyIncomeAmount(amount: number, frequency: 'monthly' | 'biweekly' | 'weekly' | 'yearly'): number {
+  switch (frequency) {
+    case 'weekly':
+      return (amount * 52) / 12
+    case 'biweekly':
+      return (amount * 26) / 12
+    case 'yearly':
+      return amount / 12
+    case 'monthly':
+    default:
+      return amount
+  }
 }

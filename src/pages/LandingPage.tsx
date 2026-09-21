@@ -99,7 +99,7 @@ export function LandingPage() {
 
       {/* Hero */}
       <section className="loot-gradient">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-2 md:items-center md:px-8 md:py-24">
+        <div className="mx-auto grid grid-cols-1 max-w-6xl gap-10 px-5 py-16 md:grid-cols-2 md:items-center md:px-8 md:py-24">
           <div className="animate-enter space-y-6 text-center md:text-left">
             <h1 className="text-[40px] font-bold leading-[1.05] tracking-[-0.03em] text-background md:text-[56px]">
               Know your <span className="text-background">loot.</span>
@@ -168,7 +168,7 @@ export function LandingPage() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <div key={title} className="card card-hover space-y-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/12 text-primary">
@@ -191,7 +191,7 @@ export function LandingPage() {
             </h2>
           </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
             {STEPS.map((step) => (
               <div key={step.n} className="space-y-3 text-center md:text-left">
                 <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground md:mx-0">
@@ -214,7 +214,7 @@ export function LandingPage() {
           </h2>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="card space-y-2 text-center">
             <Landmark size={22} strokeWidth={1.75} className="mx-auto text-secondary" />
             <p className="text-sm font-bold">SARS-accurate tax tables</p>

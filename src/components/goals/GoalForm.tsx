@@ -24,17 +24,30 @@ export function GoalForm({
   const [currentAmount, setCurrentAmount] = useState(initial?.current_amount?.toString() ?? '0')
   const [targetDate, setTargetDate] = useState(initial?.target_date ?? '')
   const [note, setNote] = useState(initial?.note ?? '')
+  const [auto, setAuto] = useState(initial?.progress_mode === 'auto')
+  const [weight, setWeight] = useState(String(initial?.weight ?? 1))
+  const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !targetAmount) return
+    setError(null)
+    const target = Number(targetAmount)
+    const current = currentAmount === '' ? 0 : Number(currentAmount)
+    const weightNum = weight === '' ? 1 : Number(weight)
+    if (!name.trim()) return setError('Give the goal a name.')
+    if (!Number.isFinite(target) || target <= 0) return setError('The target amount must be more than zero.')
+    if (!Number.isFinite(current) || current < 0) return setError("'Already saved' can't be negative.")
+    if (auto && (!Number.isFinite(weightNum) || weightNum <= 0)) return setError('The share weight must be more than zero.')
     onSubmit({
       name: name.trim(),
       category,
-      target_amount: Number(targetAmount),
-      current_amount: currentAmount ? Number(currentAmount) : 0,
-      target_date: targetDate || undefined,
-      note: note.trim() || undefined,
+      target_amount: target,
+      current_amount: current,
+      // null (not undefined) so clearing these on an existing goal actually clears them.
+      target_date: targetDate || null,
+      note: note.trim() || null,
+      progress_mode: auto ? 'auto' : 'manual',
+      ...(auto ? { weight: weightNum } : {}),
     })
   }
 
@@ -76,7 +89,8 @@ export function GoalForm({
             id="goal-target"
             type="number"
             inputMode="decimal"
-            min={0}
+            min={0.01}
+            step="any"
             value={targetAmount}
             onChange={(e) => setTargetAmount(e.target.value)}
             placeholder="0"
@@ -92,6 +106,7 @@ export function GoalForm({
             type="number"
             inputMode="decimal"
             min={0}
+            step="any"
             value={currentAmount}
             onChange={(e) => setCurrentAmount(e.target.value)}
             placeholder="0"
@@ -103,12 +118,7 @@ export function GoalForm({
         <label className="field-label" htmlFor="goal-date">
           Target date (optional)
         </label>
-        <input
-          id="goal-date"
-          type="date"
-          value={targetDate ?? ''}
-          onChange={(e) => setTargetDate(e.target.value)}
-        />
+        <input id="goal-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
       </div>
 
       <div>
@@ -117,11 +127,58 @@ export function GoalForm({
         </label>
         <input
           id="goal-note"
-          value={note ?? ''}
+          value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Three months of expenses"
         />
       </div>
+
+      <div className="space-y-3 rounded-xl border border-hairline p-3.5">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={auto}
+            onChange={(e) => setAuto(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+            style={{ width: 'auto' }}
+          />
+          <span>
+            <span className="block text-sm font-semibold">Auto-fund from my spare loot</span>
+            <span className="block text-xs text-text-muted">
+              Each month Loot adds a share of what's left after your safety buffer to this goal's progress. It only
+              tracks the amount — it never moves real money, so still make the transfer with your bank. Off = you log
+              contributions yourself.
+            </span>
+          </span>
+        </label>
+        {auto && (
+          <div>
+            <label className="field-label" htmlFor="goal-weight">
+              Share weight
+            </label>
+            <input
+              id="goal-weight"
+              type="number"
+              inputMode="decimal"
+              min={0.1}
+              step="any"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              className="max-w-28"
+            />
+            <p className="mt-1.5 text-xs text-text-muted">
+              A goal with weight 2 gets twice the share of one with weight 1. (Ignored if you split in priority order —
+              see Settings.)
+            </p>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <p role="alert" className="text-xs text-alert">
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-3 pt-1">
         {onCancel && (

@@ -20,7 +20,7 @@ export function NotificationCenter() {
   const { data: taxProfile } = useTaxProfile()
   const { data: subscriptionReviews = [] } = useSubscriptionReviews()
   const { data: goals = [] } = useGoals()
-  const { data: snapshots = [] } = useSnapshots(3)
+  const { data: snapshots = [] } = useSnapshots(4)
   const { data: currentSnapshot } = useCurrentMonthSnapshot()
   const { data: briefings = [] } = useMonthlyBriefings()
   const { data: scores = [] } = useBudgeScores()

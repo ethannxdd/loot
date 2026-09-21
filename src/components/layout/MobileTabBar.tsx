@@ -1,17 +1,17 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { MOBILE_TABS } from '@/lib/nav'
+import { isActivePath, MOBILE_TABS } from '@/lib/nav'
 
 export function MobileTabBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-center border-t border-hairline bg-background/92 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-[calc(56px+env(safe-area-inset-bottom))] items-start border-t border-hairline bg-background/92 backdrop-blur-xl md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex flex-1 items-center justify-around">
+      <div className="flex h-14 flex-1 items-center justify-around">
         {MOBILE_TABS.map((item) => {
-          const isActive = pathname === item.to
+          const isActive = isActivePath(pathname, item.to)
           const Icon = item.icon
           return (
             <Link

@@ -15,6 +15,11 @@ dist-ssr
 # env
 .env
 .env.local
+.env.*.local
+!.env.example
+
+# Supabase CLI cache (per-machine; already-tracked copies: git rm -r --cached supabase/.temp)
+supabase/.temp
 
 # TanStack Router generated file
 src/routeTree.gen.ts

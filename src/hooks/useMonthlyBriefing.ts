@@ -47,7 +47,7 @@ function useUpsertBriefing() {
  * it's seen, per "Briefing Card: auto-generated on first day of month after close."
  */
 export function useLatestBriefing(lockedSnapshots: MonthlySnapshot[]) {
-  const { data: briefings = [], isLoading } = useMonthlyBriefings()
+  const { data: briefings = [], isLoading, isSuccess } = useMonthlyBriefings()
   const upsert = useUpsertBriefing()
   const generatedFor = useRef<string | null>(null)
 
@@ -56,14 +56,15 @@ export function useLatestBriefing(lockedSnapshots: MonthlySnapshot[]) {
   const previousClosed = sorted[sorted.length - 2] ?? null
 
   useEffect(() => {
-    if (!latestClosed) return
+    // Wait for the stored briefings to load; otherwise we'd regenerate (and overwrite) one that already exists.
+    if (!latestClosed || !isSuccess) return
     if (briefings.some((b) => b.month === latestClosed.month)) return
     if (generatedFor.current === latestClosed.month) return
     generatedFor.current = latestClosed.month
     const { observations, recommendation } = computeBriefing(latestClosed, previousClosed)
     upsert.mutate({ month: latestClosed.month, observations, recommendation })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestClosed?.month, briefings.length])
+  }, [latestClosed?.month, briefings.length, isSuccess])
 
   const latest = briefings[0] ?? null
   return { latest, isLoading }

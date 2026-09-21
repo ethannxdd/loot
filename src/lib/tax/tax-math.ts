@@ -1,5 +1,5 @@
 import type { TaxProfile, TaxYearData } from '@/lib/types'
-import { getTaxTable, type TaxTable } from './tax-tables'
+import { getCurrentTaxYear, getTaxTable, type TaxTable } from './tax-tables'
 
 export function computeGrossTax(taxableIncome: number, table: TaxTable): number {
   if (taxableIncome <= 0) return 0
@@ -39,6 +39,8 @@ export interface TaxEstimate {
   homeOfficeDeduction: number
   travelDeduction: number
   donationsDeduction: number
+  /** Professional development / CPD costs — only deductible against self-employed income. */
+  professionalDevelopmentDeduction: number
   taxableIncome: number
   grossTax: number
   rebates: number
@@ -46,34 +48,65 @@ export interface TaxEstimate {
   annualLiability: number
   monthlyPaye: number
   effectiveRate: number
+  /** The bracket rate (%) applied to the last rand of taxable income. */
+  marginalRate: number
   belowThreshold: boolean
-  /** Positive = refund estimate (paid more PAYE than owed), negative = amount still owed. */
+  /**
+   * PAYE assumed to have been withheld all year. For salaried and retired taxpayers this is the tax on the full
+   * income with none of the claimable deductions applied (payroll doesn't know about them); for everyone else 0.
+   */
+  payeWithheld: number
+  payeAssumed: boolean
+  /** Tax saved by the deductions entered — liability without them minus liability with them. */
+  deductionSaving: number
+  /** Positive = refund estimate (PAYE withheld exceeds what's owed), negative = amount still to pay. */
   refundOrOweEstimate: number
+}
+
+/** Employment types whose tax is normally deducted at source by an employer or pension fund. */
+export function isPayeEmployment(type: TaxProfile['employment_type']): boolean {
+  return type === 'salaried' || type === 'retired'
+}
+
+function marginalRateAt(taxableIncome: number, table: TaxTable): number {
+  const bracket = table.brackets.find((b) => b.upTo === null || taxableIncome <= b.upTo)!
+  return bracket.rate * 100
+}
+
+function liabilityFor(taxableIncome: number, profile: TaxProfile, table: TaxTable): number {
+  const gross = computeGrossTax(taxableIncome, table)
+  const rebates = computeRebates(profile.age, table)
+  const medical = computeMedicalCredit(profile.has_medical_aid, profile.medical_dependants, table)
+  return Math.max(0, gross - rebates - medical)
 }
 
 export function estimateTax(
   profile: TaxProfile,
   yearData: TaxYearData,
   grossAnnualIncome: number,
-  paidViaPayeAnnual: number
+  /** Override for PAYE withheld; when omitted it's assumed from the employment type (see TaxEstimate.payeWithheld). */
+  paidViaPayeAnnual?: number,
 ): TaxEstimate {
   const table = getTaxTable(yearData.tax_year)
+  const nonNeg = (n: number) => (Number.isFinite(n) && n > 0 ? n : 0)
 
-  const raDeduction = raDeductionAmount(yearData.ra_contributions, grossAnnualIncome, table)
+  const raDeduction = raDeductionAmount(nonNeg(yearData.ra_contributions), grossAnnualIncome, table)
   const incomeAfterRa = grossAnnualIncome - raDeduction
-  const donationsDeduction = donationsDeductionAmount(yearData.donations, incomeAfterRa)
-  const homeOfficeDeduction = profile.home_office_enabled === 'yes' ? yearData.home_office_deduction : 0
-  const travelDeduction = profile.has_travel_allowance ? yearData.travel_deduction : 0
+  const donationsDeduction = donationsDeductionAmount(nonNeg(yearData.donations), incomeAfterRa)
+  const homeOfficeDeduction = profile.home_office_enabled === 'yes' ? nonNeg(yearData.home_office_deduction) : 0
+  const travelDeduction = profile.has_travel_allowance ? nonNeg(yearData.travel_deduction) : 0
+  const professionalDevelopmentDeduction =
+    profile.employment_type === 'self_employed' || profile.employment_type === 'both' ? nonNeg(yearData.professional_development) : 0
 
   const taxableIncome = Math.max(
     0,
-    incomeAfterRa - donationsDeduction - homeOfficeDeduction - travelDeduction
+    incomeAfterRa - donationsDeduction - homeOfficeDeduction - travelDeduction - professionalDevelopmentDeduction,
   )
+  const annualLiability = liabilityFor(taxableIncome, profile, table)
 
-  const grossTax = computeGrossTax(taxableIncome, table)
-  const rebates = computeRebates(profile.age, table)
-  const medicalCredit = computeMedicalCredit(profile.has_medical_aid, profile.medical_dependants, table)
-  const annualLiability = Math.max(0, grossTax - rebates - medicalCredit)
+  const withoutDeductions = liabilityFor(Math.max(0, grossAnnualIncome), profile, table)
+  const payeAssumed = paidViaPayeAnnual === undefined && isPayeEmployment(profile.employment_type)
+  const payeWithheld = paidViaPayeAnnual ?? (payeAssumed ? withoutDeductions : 0)
 
   const threshold =
     profile.age >= 75 ? table.thresholds.from75 : profile.age >= 65 ? table.thresholds.from65to74 : table.thresholds.under65
@@ -85,45 +118,73 @@ export function estimateTax(
     homeOfficeDeduction,
     travelDeduction,
     donationsDeduction,
+    professionalDevelopmentDeduction,
     taxableIncome,
-    grossTax,
-    rebates,
-    medicalCredit,
+    grossTax: computeGrossTax(taxableIncome, table),
+    rebates: computeRebates(profile.age, table),
+    medicalCredit: computeMedicalCredit(profile.has_medical_aid, profile.medical_dependants, table),
     annualLiability,
     monthlyPaye: annualLiability / 12,
     effectiveRate: grossAnnualIncome > 0 ? (annualLiability / grossAnnualIncome) * 100 : 0,
+    marginalRate: taxableIncome > 0 ? marginalRateAt(taxableIncome, table) : 0,
     belowThreshold: grossAnnualIncome < threshold,
-    refundOrOweEstimate: paidViaPayeAnnual - annualLiability,
+    payeWithheld,
+    payeAssumed,
+    deductionSaving: Math.max(0, withoutDeductions - annualLiability),
+    refundOrOweEstimate: payeWithheld - annualLiability,
   }
 }
 
 export interface ProvisionalEstimate {
   periodLabel: string
-  dueDate: string // ISO date
+  dueDate: string // ISO date, local calendar
   amountDue: number
   daysUntilDue: number
 }
 
-/** Two provisional tax periods per SA tax year: 31 Aug (mid-year) and end-Feb (final). */
-export function provisionalTaxEstimates(estimate: TaxEstimate, taxYearStartYear: number, from = new Date()): ProvisionalEstimate[] {
-  const augDue = new Date(taxYearStartYear, 7, 31) // August = month index 7
-  const febDue = new Date(taxYearStartYear + 1, 1, 28) // February = month index 1
+function localIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
-  const halfLiability = estimate.annualLiability / 2
+/**
+ * The two provisional payments for a tax year: 31 August (half of the year's estimated tax) and the last day
+ * of February (the rest). PAYE already withheld is credited first, so only the tax not covered by payroll is
+ * split between the two.
+ */
+export function provisionalTaxEstimates(estimate: TaxEstimate, taxYearStartYear: number, from = new Date()): ProvisionalEstimate[] {
+  const augDue = new Date(taxYearStartYear, 7, 31) // 31 August
+  const febDue = new Date(taxYearStartYear + 1, 2, 0) // day 0 of March = last day of February (leap years included)
+  const today = new Date(from.getFullYear(), from.getMonth(), from.getDate())
   const dayMs = 1000 * 60 * 60 * 24
+
+  const net = Math.max(0, estimate.annualLiability - estimate.payeWithheld)
+  const first = net / 2
+  const second = net - first
 
   return [
     {
       periodLabel: 'First period (August)',
-      dueDate: augDue.toISOString().slice(0, 10),
-      amountDue: halfLiability,
-      daysUntilDue: Math.ceil((augDue.getTime() - from.getTime()) / dayMs),
+      dueDate: localIsoDate(augDue),
+      amountDue: first,
+      daysUntilDue: Math.round((augDue.getTime() - today.getTime()) / dayMs),
     },
     {
       periodLabel: 'Second period (February)',
-      dueDate: febDue.toISOString().slice(0, 10),
-      amountDue: estimate.annualLiability,
-      daysUntilDue: Math.ceil((febDue.getTime() - from.getTime()) / dayMs),
+      dueDate: localIsoDate(febDue),
+      amountDue: second,
+      daysUntilDue: Math.round((febDue.getTime() - today.getTime()) / dayMs),
     },
   ]
+}
+
+/**
+ * Effective income-tax rate (%) on a gross monthly salary, from the SARS tables for the current tax year
+ * (primary rebate only, age 30 assumed, no medical credit or deductions). Used to pre-fill the Salary Planner.
+ */
+export function estimateEffectiveTaxRatePct(grossMonthly: number, taxYear = getCurrentTaxYear(), age = 30): number {
+  const annual = grossMonthly * 12
+  if (!(annual > 0)) return 0
+  const table = getTaxTable(taxYear)
+  const liability = Math.max(0, computeGrossTax(annual, table) - computeRebates(age, table))
+  return Math.round((liability / annual) * 1000) / 10
 }

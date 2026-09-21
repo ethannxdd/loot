@@ -1,7 +1,15 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { useProfile } from '@/hooks/useProfile'
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from '@/lib/categories'
-import { EXPENSE_FREQUENCIES, type Expense, type ExpenseFrequency, type NewExpense } from '@/lib/types'
+import {
+  CURRENCIES,
+  EXPENSE_FREQUENCIES,
+  type Expense,
+  type ExpenseFrequency,
+  type NewExpense,
+} from '@/lib/types'
+import { formatCurrencyExact } from '@/lib/utils'
 
 interface ExpenseFormProps {
   initial?: Partial<Expense>
@@ -19,6 +27,8 @@ const FREQUENCY_LABELS: Record<ExpenseFrequency, string> = {
   'once-off': 'Once-off',
 }
 
+const LEAD_DAY_OPTIONS = [1, 2, 3, 5, 7, 14]
+
 export function ExpenseForm({
   initial,
   compact = false,
@@ -27,27 +37,61 @@ export function ExpenseForm({
   onSubmit,
   onCancel,
 }: ExpenseFormProps) {
+  const { data: profile } = useProfile()
+  const homeCurrency = profile?.currency_code ?? 'ZAR'
+  const multiCurrency = Boolean(profile?.multi_currency_enabled)
+
   const [name, setName] = useState(initial?.name ?? '')
   const [category, setCategory] = useState(initial?.category ?? EXPENSE_CATEGORIES[0])
-  const [amount, setAmount] = useState(initial?.amount?.toString() ?? '')
+  // When an expense was entered in a foreign currency, edit it in that currency; the converted amount is derived.
+  const initialForeign = Boolean(initial?.original_currency && initial?.original_amount != null)
+  const [amount, setAmount] = useState(
+    (initialForeign ? initial?.original_amount : initial?.amount)?.toString() ?? '',
+  )
+  const [currency, setCurrency] = useState<string>(initialForeign ? initial!.original_currency! : '')
+  const [rate, setRate] = useState(initial?.exchange_rate?.toString() ?? '')
   const [frequency, setFrequency] = useState<ExpenseFrequency>(
     (initial?.frequency as ExpenseFrequency) ?? 'monthly',
   )
   const [isFixed, setIsFixed] = useState(initial?.is_fixed ?? true)
   const [dueDay, setDueDay] = useState(initial?.due_day?.toString() ?? '')
   const [notifyEnabled, setNotifyEnabled] = useState(initial?.notify_enabled ?? false)
+  const [leadDays, setLeadDays] = useState(initial?.notify_lead_days ?? 3)
+  const [workRelated, setWorkRelated] = useState(initial?.work_related ?? false)
+  const [error, setError] = useState<string | null>(null)
+
+  const currencyChoice = currency || homeCurrency
+  const isForeign = (multiCurrency || initialForeign) && currencyChoice !== homeCurrency
+  const numericAmount = Number(amount)
+  const numericRate = Number(rate)
+  const convertedAmount = isForeign ? numericAmount * numericRate : numericAmount
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !amount) return
+    setError(null)
+    if (!name.trim()) return setError('Give the expense a name.')
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setError('Enter an amount greater than zero.')
+    if (isForeign && (!Number.isFinite(numericRate) || numericRate <= 0)) {
+      return setError(`Enter the exchange rate (1 ${currencyChoice} in ${homeCurrency}).`)
+    }
+    const due = dueDay ? Math.floor(Number(dueDay)) : null
+    if (due !== null && (due < 1 || due > 31)) return setError('The due day must be between 1 and 31.')
+    if (notifyEnabled && due === null) return setError('Add a due day so Loot knows when to remind you.')
+
     onSubmit({
       name: name.trim(),
       category,
-      amount: Number(amount),
+      amount: Math.round(convertedAmount * 100) / 100,
       frequency,
       is_fixed: isFixed,
-      due_day: dueDay ? Number(dueDay) : undefined,
+      // null (not undefined) so clearing the field on an existing expense actually clears it.
+      due_day: due,
       notify_enabled: notifyEnabled,
+      notify_lead_days: leadDays,
+      work_related: workRelated,
+      original_amount: isForeign ? numericAmount : null,
+      original_currency: isForeign ? currencyChoice : null,
+      exchange_rate: isForeign ? numericRate : null,
     })
   }
 
@@ -63,7 +107,7 @@ export function ExpenseForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="Rent"
           required
-          autoFocus
+          autoFocus={!compact}
         />
       </div>
 
@@ -76,8 +120,8 @@ export function ExpenseForm({
             id="expense-amount"
             type="number"
             inputMode="decimal"
-            min={0}
-            step={0.01}
+            min={0.01}
+            step="any"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
@@ -102,15 +146,52 @@ export function ExpenseForm({
         </div>
       </div>
 
+      {(multiCurrency || initialForeign) && !compact && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="field-label" htmlFor="expense-currency">
+              Currency
+            </label>
+            <select id="expense-currency" value={currencyChoice} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                  {c === homeCurrency ? ' (home)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          {isForeign && (
+            <div>
+              <label className="field-label" htmlFor="expense-rate">
+                Rate (1 {currencyChoice} = ? {homeCurrency})
+              </label>
+              <input
+                id="expense-rate"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                placeholder="e.g. 18.5"
+                required
+              />
+            </div>
+          )}
+        </div>
+      )}
+      {isForeign && Number.isFinite(convertedAmount) && convertedAmount > 0 && (
+        <p className="-mt-1.5 text-xs text-text-muted">
+          Counts as {formatCurrencyExact(convertedAmount, homeCurrency)} in your budget.
+        </p>
+      )}
+
       <div>
         <label className="field-label" htmlFor="expense-category">
           Category
         </label>
-        <select
-          id="expense-category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
+        <select id="expense-category" value={category} onChange={(e) => setCategory(e.target.value)}>
           {EXPENSE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {CATEGORY_LABELS[c]}
@@ -125,6 +206,7 @@ export function ExpenseForm({
             <button
               type="button"
               onClick={() => setIsFixed(true)}
+              aria-pressed={isFixed}
               className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
                 isFixed ? 'bg-surface-3 text-foreground' : 'text-text-muted'
               }`}
@@ -134,6 +216,7 @@ export function ExpenseForm({
             <button
               type="button"
               onClick={() => setIsFixed(false)}
+              aria-pressed={!isFixed}
               className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
                 !isFixed ? 'bg-surface-3 text-foreground' : 'text-text-muted'
               }`}
@@ -165,10 +248,46 @@ export function ExpenseForm({
                 className="h-4 w-4 accent-primary"
                 style={{ width: 'auto' }}
               />
-              Notify me
+              Remind me
             </label>
           </div>
+
+          {notifyEnabled && (
+            <div>
+              <label className="field-label" htmlFor="expense-lead-days">
+                Remind me
+              </label>
+              <select
+                id="expense-lead-days"
+                value={leadDays}
+                onChange={(e) => setLeadDays(Number(e.target.value))}
+              >
+                {LEAD_DAY_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d} day{d === 1 ? '' : 's'} before it's due
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={workRelated}
+              onChange={(e) => setWorkRelated(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+              style={{ width: 'auto' }}
+            />
+            Work-related (may be tax-deductible)
+          </label>
         </>
+      )}
+
+      {error && (
+        <p role="alert" className="text-xs text-alert">
+          {error}
+        </p>
       )}
 
       <div className="flex gap-3 pt-1">
