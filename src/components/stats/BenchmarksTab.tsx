@@ -38,7 +38,7 @@ export function BenchmarksTab({
 
   return (
     <div className="card space-y-3">
-      <div className="overline">Your spend vs the {INCOME_BRACKET_LABELS[bracket]} bracket</div>
+      <div className="overline-label">Your spend vs the {INCOME_BRACKET_LABELS[bracket]} bracket</div>
       {eligible.map((b) => {
         const userAmount = userTotals[b.category] ?? 0
         const userPct = userTotal > 0 ? (userAmount / userTotal) * 100 : 0

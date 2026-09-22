@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Logo } from '@/components/ui/Logo'
+import { Select } from '@/components/ui/Select'
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
 import { monthlyIncomeAmount } from '@/lib/money'
 import { upsertCurrentMonthSnapshot } from '@/lib/snapshot'
@@ -95,7 +96,7 @@ export function OnboardingPage() {
             <Logo size={28} />
             <span className="text-sm font-bold">Loot</span>
           </div>
-          <span className="overline">
+          <span className="overline-label">
             Step {step} of {TOTAL_STEPS}
           </span>
         </div>
@@ -136,17 +137,12 @@ export function OnboardingPage() {
               <label className="field-label" htmlFor="currency">
                 Currency
               </label>
-              <select
+              <Select
                 id="currency"
                 value={currencyCode}
-                onChange={(e) => setCurrencyCode(e.target.value as CurrencyCode)}
-              >
-                {CURRENCIES.map((code) => (
-                  <option key={code} value={code}>
-                    {CURRENCY_LABELS[code]}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(v) => setCurrencyCode(v as CurrencyCode)}
+                options={CURRENCIES.map((code) => ({ value: code, label: CURRENCY_LABELS[code] }))}
+              />
             </div>
           </div>
         )}
@@ -163,17 +159,12 @@ export function OnboardingPage() {
               <label className="field-label" htmlFor="pay-frequency">
                 Pay frequency
               </label>
-              <select
+              <Select
                 id="pay-frequency"
                 value={payFrequency}
-                onChange={(e) => setPayFrequency(e.target.value as PayFrequency)}
-              >
-                {PAY_FREQUENCIES.map((freq) => (
-                  <option key={freq} value={freq}>
-                    {FREQUENCY_LABELS[freq]}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(v) => setPayFrequency(v as PayFrequency)}
+                options={PAY_FREQUENCIES.map((freq) => ({ value: freq, label: FREQUENCY_LABELS[freq] }))}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -13,7 +13,7 @@ export function ProvisionalTaxCard({ estimates }: { estimates: ProvisionalEstima
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {estimates.map((e) => (
           <div key={e.periodLabel} className="rounded-xl bg-surface-2 p-3.5">
-            <p className="overline">{e.periodLabel}</p>
+            <p className="overline-label">{e.periodLabel}</p>
             <p className="tnum mt-1 text-lg">{formatCurrency(e.amountDue)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Due {parseDateOnly(e.dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })} ·{' '}

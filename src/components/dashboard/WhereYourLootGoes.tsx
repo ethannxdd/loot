@@ -39,7 +39,7 @@ export function WhereYourLootGoes({ expenses }: { expenses: Expense[] }) {
 
   return (
     <div className="card space-y-4">
-      <div className="overline">Where your loot goes</div>
+      <div className="overline-label">Where your loot goes</div>
       <div className="flex items-center gap-5">
         <div className="h-28 w-28 shrink-0">
           <ResponsiveContainer width="100%" height="100%">

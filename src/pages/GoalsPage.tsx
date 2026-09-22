@@ -1,12 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { Plus, Sparkles, Target } from 'lucide-react'
-import { useMemo, useState, type DragEvent } from 'react'
+import { Plus, Sparkles, Target, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { toast } from 'sonner'
 import { GoalCard } from '@/components/goals/GoalCard'
 import { GoalForm } from '@/components/goals/GoalForm'
 import { PauseGoalModal } from '@/components/goals/PauseGoalModal'
-import { Modal } from '@/components/ui/Modal'
 import { useExpenses } from '@/hooks/useExpenses'
 import { useAutoAllocation } from '@/hooks/useAutoAllocation'
 import {
@@ -69,6 +68,11 @@ export function GoalsPage() {
   const [pauseTarget, setPauseTarget] = useState<SavingsGoal | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const addFormRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (addOpen) addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [addOpen])
 
   const ordered = useMemo(() => displayOrder(goals), [goals])
   const disposable = profile ? disposableIncome(profile.net_income, expenses) : 0
@@ -157,30 +161,39 @@ export function GoalsPage() {
     )
   }
 
-  const modals = (
-    <>
-      {addOpen && (
-        <Modal title="New goal" onClose={() => setAddOpen(false)}>
-          <GoalForm onSubmit={handleCreate} onCancel={() => setAddOpen(false)} isSubmitting={createGoal.isPending} />
-        </Modal>
-      )}
-      {pauseTarget && (
-        <PauseGoalModal
-          goal={pauseTarget}
-          isPending={updateGoal.isPending}
-          onConfirm={confirmPause}
-          onCancel={() => setPauseTarget(null)}
-        />
-      )}
-    </>
+  const addGoalSection = addOpen && (
+    <section ref={addFormRef} className="card-elevated animate-enter space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold">New goal</h2>
+        <button
+          type="button"
+          onClick={() => setAddOpen(false)}
+          aria-label="Close"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+        >
+          <X size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+      <GoalForm onSubmit={handleCreate} onCancel={() => setAddOpen(false)} isSubmitting={createGoal.isPending} />
+    </section>
+  )
+
+  const pauseModal = pauseTarget && (
+    <PauseGoalModal
+      goal={pauseTarget}
+      isPending={updateGoal.isPending}
+      onConfirm={confirmPause}
+      onCancel={() => setPauseTarget(null)}
+    />
   )
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader onAdd={() => setAddOpen(true)} />
+        {addGoalSection}
         <div className="skeleton h-40 rounded-2xl" />
-        {modals}
+        {pauseModal}
       </div>
     )
   }
@@ -189,6 +202,7 @@ export function GoalsPage() {
     return (
       <div className="animate-enter space-y-6">
         <PageHeader onAdd={() => setAddOpen(true)} />
+        {addGoalSection}
         <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
             <Target size={32} strokeWidth={1.75} />
@@ -203,7 +217,7 @@ export function GoalsPage() {
             Add a goal
           </button>
         </div>
-        {modals}
+        {pauseModal}
       </div>
     )
   }
@@ -211,11 +225,12 @@ export function GoalsPage() {
   return (
     <div className="animate-enter space-y-6">
       <PageHeader onAdd={() => setAddOpen(true)} />
+      {addGoalSection}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
           <div className="flex items-center justify-between">
-            <span className="overline">Your goals</span>
+            <span className="overline-label">Your goals</span>
             {goals.length > 1 && (
               <button type="button" onClick={applySuggestedOrder} className="text-xs font-semibold text-primary">
                 Use suggested order
@@ -266,7 +281,7 @@ export function GoalsPage() {
 
         <div className="space-y-5">
           <div className="card-elevated space-y-3">
-            <div className="overline">Combined impact</div>
+            <div className="overline-label">Combined impact</div>
             <div>
               <p className="tnum text-2xl">{formatCurrency(totalCommitment)}</p>
               <p className="text-xs text-text-muted">
@@ -281,7 +296,7 @@ export function GoalsPage() {
 
           {suggestions.length > 0 && (
             <div className="card space-y-3">
-              <div className="overline text-alert">Shortfall</div>
+              <div className="overline-label text-alert">Shortfall</div>
               <p className="text-xs text-muted-foreground">
                 Your goals need {formatCurrency(shortfall)} more than you have disposable each month.
               </p>
@@ -296,7 +311,7 @@ export function GoalsPage() {
           )}
 
           <div className="card">
-            <div className="overline mb-3">24-month commitment</div>
+            <div className="overline-label mb-3">24-month commitment</div>
             {chartHasData ? (
               <div className="h-32">
                 <ResponsiveContainer width="100%" height="100%">
@@ -321,7 +336,7 @@ export function GoalsPage() {
         </div>
       </div>
 
-      {modals}
+      {pauseModal}
     </div>
   )
 }

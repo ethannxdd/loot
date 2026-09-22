@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Select } from '@/components/ui/Select'
 import {
   NET_WORTH_ASSET_CATEGORIES,
   NET_WORTH_CATEGORY_LABELS,
@@ -64,13 +65,12 @@ export function NetWorthItemForm({ initial, isSubmitting, onSubmit, onCancel }: 
         <label className="field-label" htmlFor="nw-category">
           Category
         </label>
-        <select id="nw-category" value={category} onChange={(e) => setCategory(e.target.value as typeof category)}>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {NET_WORTH_CATEGORY_LABELS[c]}
-            </option>
-          ))}
-        </select>
+        <Select
+          id="nw-category"
+          value={category}
+          onValueChange={(v) => setCategory(v as typeof category)}
+          options={categories.map((c) => ({ value: c, label: NET_WORTH_CATEGORY_LABELS[c] }))}
+        />
       </div>
 
       <div>

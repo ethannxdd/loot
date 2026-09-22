@@ -29,7 +29,7 @@ export function ScoreTimelineChart({ history, bureauScores }: ScoreTimelineChart
 
   return (
     <div>
-      <p className="overline mb-3">Score over time</p>
+      <p className="overline-label mb-3">Score over time</p>
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

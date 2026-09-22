@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import { Loader2, Sparkles } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { Loader2, Sparkles, X } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CheckHistoryList } from '@/components/checker/CheckHistoryList'
 import { ExpenseForm } from '@/components/expenses/ExpenseForm'
-import { Modal } from '@/components/ui/Modal'
 import { useAffordabilityChecks, useCreateAffordabilityCheck } from '@/hooks/useAffordabilityChecks'
 import { useAddExpense, useExpenses } from '@/hooks/useExpenses'
 import { useGoals } from '@/hooks/useGoals'
@@ -40,6 +39,11 @@ export function CheckerPage() {
   const [addToExpensesOpen, setAddToExpensesOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const result = checked?.result ?? null
+  const addFormRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (addToExpensesOpen) addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [addToExpensesOpen])
 
   function runCheck(e: FormEvent) {
     e.preventDefault()
@@ -201,7 +205,7 @@ export function CheckerPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">{result.reasoning}</p>
-          {checked?.isRecurring && result.verdict !== 'not-recommended' && (
+          {checked?.isRecurring && result.verdict !== 'not-recommended' && !addToExpensesOpen && (
             <button
               type="button"
               onClick={() => setAddToExpensesOpen(true)}
@@ -213,15 +217,19 @@ export function CheckerPage() {
         </div>
       )}
 
-      {history.length > 0 && (
-        <section className="space-y-2">
-          <div className="overline px-1">History</div>
-          <CheckHistoryList checks={history} />
-        </section>
-      )}
-
       {addToExpensesOpen && (
-        <Modal title="Add to expenses" onClose={() => setAddToExpensesOpen(false)}>
+        <div ref={addFormRef} className="card-elevated animate-enter space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold">Add to expenses</h2>
+            <button
+              type="button"
+              onClick={() => setAddToExpensesOpen(false)}
+              aria-label="Close"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
+          </div>
           <ExpenseForm
             initial={{ name: checked?.itemName ?? itemName, amount: checked?.amount ?? Number(amount), frequency: 'monthly' }}
             onSubmit={handleAddToExpenses}
@@ -229,8 +237,16 @@ export function CheckerPage() {
             isSubmitting={addExpense.isPending}
             submitLabel="Add to expenses"
           />
-        </Modal>
+        </div>
       )}
+
+      {history.length > 0 && (
+        <section className="space-y-2">
+          <div className="overline-label px-1">History</div>
+          <CheckHistoryList checks={history} />
+        </section>
+      )}
+
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Bell, Globe, Landmark, Loader2, Shield, Target } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
+import { Select } from '@/components/ui/Select'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { useTaxProfile } from '@/hooks/useTaxProfile'
 import { normalizeAllocationMode, normalizeAutoTiming } from '@/lib/goal-math'
@@ -59,7 +60,7 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
   return (
     <>
       <form onSubmit={saveBuffer} className="card space-y-4">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Shield size={13} strokeWidth={2} /> Financial
         </div>
         <div>
@@ -126,7 +127,7 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
       </form>
 
       <section className="card space-y-4">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Target size={13} strokeWidth={2} /> Goals — auto progress
         </div>
         <p className="text-sm text-muted-foreground">
@@ -137,34 +138,32 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
             <label className="field-label" htmlFor="settings-alloc-mode">
               How to split it
             </label>
-            <select
+            <Select
               id="settings-alloc-mode"
               value={normalizeAllocationMode(profile.auto_allocation_mode)}
               disabled={update.isPending}
-              onChange={(e) =>
-                update.mutate({ auto_allocation_mode: e.target.value }, { onSuccess: () => toast.success('Saved') })
-              }
-            >
-              <option value="weighted">By share weight (shared out together)</option>
-              <option value="sequential">In priority order (top goal first)</option>
-            </select>
+              onValueChange={(v) => update.mutate({ auto_allocation_mode: v }, { onSuccess: () => toast.success('Saved') })}
+              options={[
+                { value: 'weighted', label: 'By share weight (shared out together)' },
+                { value: 'sequential', label: 'In priority order (top goal first)' },
+              ]}
+            />
           </div>
           <div>
             <label className="field-label" htmlFor="settings-alloc-timing">
               When to add it
             </label>
-            <select
+            <Select
               id="settings-alloc-timing"
               value={normalizeAutoTiming(profile.auto_contribution_timing)}
               disabled={update.isPending}
-              onChange={(e) =>
-                update.mutate({ auto_contribution_timing: e.target.value }, { onSuccess: () => toast.success('Saved') })
-              }
-            >
-              <option value="on_demand">When I press Apply</option>
-              <option value="monthly_1st">Automatically each month</option>
-              <option value="estimate_only">Estimates only</option>
-            </select>
+              onValueChange={(v) => update.mutate({ auto_contribution_timing: v }, { onSuccess: () => toast.success('Saved') })}
+              options={[
+                { value: 'on_demand', label: 'When I press Apply' },
+                { value: 'monthly_1st', label: 'Automatically each month' },
+                { value: 'estimate_only', label: 'Estimates only' },
+              ]}
+            />
           </div>
         </div>
         <p className="text-xs text-text-muted">
@@ -174,7 +173,7 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
       </section>
 
       <section className="card space-y-3">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Bell size={13} strokeWidth={2} /> Notifications
         </div>
         <p className="text-sm text-muted-foreground">
@@ -202,7 +201,7 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
       </section>
 
       <section className="card space-y-3">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Landmark size={13} strokeWidth={2} /> Tax
         </div>
         {taxProfile ? (

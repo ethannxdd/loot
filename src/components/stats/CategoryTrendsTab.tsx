@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Select } from '@/components/ui/Select'
 import { categoryLabel, EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { monthLabel } from '@/lib/money'
 import { formatCurrency } from '@/lib/utils'
@@ -34,17 +35,12 @@ export function CategoryTrendsTab({ snapshots }: { snapshots: MonthlySnapshot[] 
 
   return (
     <div className="card space-y-4">
-      <select
+      <Select
         value={category}
-        onChange={(e) => setChosen(e.target.value as ExpenseCategory)}
+        onValueChange={(v) => setChosen(v as ExpenseCategory)}
         className="!w-auto"
-      >
-        {categoriesWithData.map((c) => (
-          <option key={c} value={c}>
-            {categoryLabel(c)}
-          </option>
-        ))}
-      </select>
+        options={categoriesWithData.map((c) => ({ value: c, label: categoryLabel(c) }))}
+      />
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

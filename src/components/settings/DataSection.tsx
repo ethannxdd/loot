@@ -43,7 +43,7 @@ export function DataSection() {
   return (
     <>
       <section className="card space-y-4">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Database size={13} strokeWidth={2} /> Your data
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -64,7 +64,7 @@ export function DataSection() {
       </section>
 
       <section className="card space-y-3 border border-alert/25">
-        <div className="overline flex items-center gap-1.5 !text-alert">
+        <div className="overline-label flex items-center gap-1.5 !text-alert">
           <TriangleAlert size={13} strokeWidth={2} /> Danger zone
         </div>
         <div className="flex items-center justify-between gap-4">

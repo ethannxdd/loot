@@ -1,5 +1,5 @@
 import { Settings } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { DeductionTracker } from '@/components/tax/DeductionTracker'
@@ -9,7 +9,6 @@ import { TaxCalendarCard } from '@/components/tax/TaxCalendarCard'
 import { TaxEstimateCard } from '@/components/tax/TaxEstimateCard'
 import { TaxGlossary } from '@/components/tax/TaxGlossary'
 import { TaxSetupForm } from '@/components/tax/TaxSetupForm'
-import { Modal } from '@/components/ui/Modal'
 import { useExpenses } from '@/hooks/useExpenses'
 import { useProfile } from '@/hooks/useProfile'
 import { useTaxProfile, useUpsertTaxProfile } from '@/hooks/useTaxProfile'
@@ -31,6 +30,11 @@ export function TaxPage() {
   const upsertYearData = useUpsertTaxYearData(taxYear)
 
   const [editingSetup, setEditingSetup] = useState(false)
+  const editFormRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (editingSetup) editFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [editingSetup])
 
   if (taxProfileLoading) {
     return <div className="skeleton h-96 rounded-2xl" />
@@ -70,6 +74,21 @@ export function TaxPage() {
         </button>
       </header>
 
+      {editingSetup && (
+        <div ref={editFormRef} className="animate-enter">
+          <TaxSetupForm
+            initial={taxProfile}
+            isSubmitting={upsertTaxProfile.isPending}
+            onCancel={() => setEditingSetup(false)}
+            onSubmit={(values) => upsertTaxProfile.mutate(values, { onSuccess: () => {
+                setEditingSetup(false)
+                toast.success('Tax profile updated')
+              },
+            })}
+          />
+        </div>
+      )}
+
       {grossAnnualIncome <= 0 && (
         <div className="card-purple flex flex-wrap items-center justify-between gap-3 px-5 py-4">
           <p className="text-sm">Add your gross income so Loot can work out your tax.</p>
@@ -104,19 +123,6 @@ export function TaxPage() {
         </div>
       </div>
 
-      {editingSetup && (
-        <Modal title="Edit tax profile" onClose={() => setEditingSetup(false)}>
-          <TaxSetupForm
-            initial={taxProfile}
-            isSubmitting={upsertTaxProfile.isPending}
-            onSubmit={(values) => upsertTaxProfile.mutate(values, { onSuccess: () => {
-                setEditingSetup(false)
-                toast.success('Tax profile updated')
-              },
-            })}
-          />
-        </Modal>
-      )}
     </div>
   )
 }

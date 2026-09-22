@@ -29,7 +29,7 @@ function LootScoreSection() {
 
   return (
     <section className="card space-y-5">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <Shield size={13} strokeWidth={2} /> Loot Score
       </div>
 
@@ -57,13 +57,13 @@ function LootScoreSection() {
           </div>
 
           <div className="border-t border-hairline pt-4">
-            <p className="overline mb-3">Factors</p>
+            <p className="overline-label mb-3">Factors</p>
             <FactorBreakdown factors={latest.factors} />
           </div>
 
           {scoreRecommendations(latest.factors).length > 0 && (
             <div className="border-t border-hairline pt-4">
-              <p className="overline mb-2">Recommendations</p>
+              <p className="overline-label mb-2">Recommendations</p>
               <ul className="space-y-1.5">
                 {scoreRecommendations(latest.factors).map((r) => (
                   <li key={r.factor} className="text-xs leading-relaxed text-muted-foreground">

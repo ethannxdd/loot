@@ -14,7 +14,7 @@ export function RecentActivity({ expenses }: { expenses: Expense[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="overline px-1">Recent activity</div>
+      <div className="overline-label px-1">Recent activity</div>
       <div className="card space-y-1">
         {recent.map((expense) => {
           const Icon = categoryIcon(expense.category)

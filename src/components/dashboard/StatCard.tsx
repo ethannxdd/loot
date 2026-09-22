@@ -52,7 +52,7 @@ export function StatCard({
     return (
       <div className="card flex items-center gap-4 !py-4">
         <div className="min-w-0">
-          <div className="overline">{label}</div>
+          <div className="overline-label">{label}</div>
           <p className="financial-number tnum mt-1 text-xl">{formatCurrency(value)}</p>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-3">
@@ -65,7 +65,7 @@ export function StatCard({
 
   return (
     <div className="card space-y-3">
-      <div className="overline">{label}</div>
+      <div className="overline-label">{label}</div>
       <p className="financial-number tnum text-[26px]">{formatCurrency(value)}</p>
       <div className="flex items-center justify-between gap-3">
         {deltaBadge}

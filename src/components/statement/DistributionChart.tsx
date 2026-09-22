@@ -21,7 +21,7 @@ export function DistributionChart({ categoryTotals }: DistributionChartProps) {
 
   return (
     <div className="card space-y-3">
-      <p className="overline">Spending distribution</p>
+      <p className="overline-label">Spending distribution</p>
       <div className="flex h-4 w-full overflow-hidden rounded-full bg-white/5">
         {entries.map(([category, amount]) => (
           <div

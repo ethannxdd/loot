@@ -1,11 +1,10 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronDown, Plus, Search, Users, Wallet } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, Plus, Search, Users, Wallet, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ExpenseForm } from '@/components/expenses/ExpenseForm'
 import { ExpenseRow } from '@/components/expenses/ExpenseRow'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
-import { Modal } from '@/components/ui/Modal'
 import {
   useAddExpense,
   useDeleteExpensePermanently,
@@ -31,18 +30,25 @@ export function ExpensesPage() {
   const restore = useRestoreExpense()
   const hardDelete = useDeleteExpensePermanently()
 
-  const [modal, setModal] = useState<'add' | { edit: Expense } | null>(null)
+  const [formState, setFormState] = useState<'add' | { edit: Expense } | null>(null)
   const [binOpen, setBinOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [confirmForever, setConfirmForever] = useState<Expense | null>(null)
+  const formRef = useRef<HTMLElement>(null)
 
-  // Deep link: /expenses?add=1 opens the add dialog, then tidies the URL so a refresh doesn't reopen it.
+  // Deep link: /expenses?add=1 opens the add form inline, then tidies the URL so a refresh doesn't reopen it.
   useEffect(() => {
     if (search.add) {
-      setModal('add')
+      setFormState('add')
       void navigate({ to: '/expenses', search: {}, replace: true })
     }
   }, [search.add, navigate])
+
+  // The form lives inline on the page rather than in a popup, so bring it into view when it opens —
+  // otherwise opening "Edit" on a row far down the list would leave the form off-screen.
+  useEffect(() => {
+    if (formState) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [formState])
 
   const q = query.trim().toLowerCase()
   const matches = (e: Expense) =>
@@ -68,7 +74,7 @@ export function ExpensesPage() {
   function handleAdd(values: NewExpense) {
     addExpense.mutate(values, {
       onSuccess: () => {
-        setModal(null)
+        setFormState(null)
         toast.success(`${values.name} added`)
       },
     })
@@ -79,7 +85,7 @@ export function ExpensesPage() {
       { id, patch: values },
       {
         onSuccess: () => {
-          setModal(null)
+          setFormState(null)
           toast.success('Expense updated')
         },
       },
@@ -122,7 +128,7 @@ export function ExpensesPage() {
           expense={expense}
           ownerLabel={ownerLabel}
           readOnly={!isMine}
-          onEdit={() => setModal({ edit: expense })}
+          onEdit={() => setFormState({ edit: expense })}
           onDelete={() => handleRemove(expense)}
           isPending={softDelete.isPending}
         />
@@ -133,7 +139,7 @@ export function ExpensesPage() {
       <ExpenseRow
         key={expense.id}
         expense={expense}
-        onEdit={() => setModal({ edit: expense })}
+        onEdit={() => setFormState({ edit: expense })}
         onDelete={() => handleRemove(expense)}
         isPending={softDelete.isPending}
       />
@@ -166,12 +172,40 @@ export function ExpensesPage() {
               Household view
             </button>
           )}
-          <button type="button" onClick={() => setModal('add')} className="btn btn-primary">
+          <button type="button" onClick={() => setFormState('add')} className="btn btn-primary">
             <Plus size={16} strokeWidth={2} />
             Add expense
           </button>
         </div>
       </header>
+
+      {formState && (
+        <section ref={formRef} className="card-elevated animate-enter space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold">{formState === 'add' ? 'Add expense' : 'Edit expense'}</h2>
+            <button
+              type="button"
+              onClick={() => setFormState(null)}
+              aria-label="Close"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
+          </div>
+          {formState === 'add' ? (
+            <ExpenseForm key="add" onSubmit={handleAdd} onCancel={() => setFormState(null)} isSubmitting={addExpense.isPending} submitLabel="Add expense" />
+          ) : (
+            <ExpenseForm
+              key={formState.edit.id}
+              initial={formState.edit}
+              onSubmit={(values) => handleUpdate(formState.edit.id, values)}
+              onCancel={() => setFormState(null)}
+              isSubmitting={updateExpense.isPending}
+              submitLabel="Save changes"
+            />
+          )}
+        </section>
+      )}
 
       {household.active && (
         <div className="card-purple flex items-center justify-between px-5 py-4">
@@ -193,7 +227,7 @@ export function ExpensesPage() {
               Add your recurring costs and Loot will show your real monthly position.
             </p>
           </div>
-          <button type="button" onClick={() => setModal('add')} className="btn btn-primary">
+          <button type="button" onClick={() => setFormState('add')} className="btn btn-primary">
             Add expense
           </button>
         </div>
@@ -226,7 +260,7 @@ export function ExpensesPage() {
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <section className="card space-y-1">
                 <div className="mb-1 flex items-baseline justify-between px-2">
-                  <div className="overline">Fixed</div>
+                  <div className="overline-label">Fixed</div>
                   <div className="tnum text-xs text-text-muted">
                     {formatCurrency(sum(household.active ? householdFixed.map((r) => r.expense) : fixed))}/mo
                   </div>
@@ -236,7 +270,7 @@ export function ExpensesPage() {
 
               <section className="card space-y-1">
                 <div className="mb-1 flex items-baseline justify-between px-2">
-                  <div className="overline">Variable</div>
+                  <div className="overline-label">Variable</div>
                   <div className="tnum text-xs text-text-muted">
                     {formatCurrency(sum(household.active ? householdVariable.map((r) => r.expense) : variable))}/mo
                   </div>
@@ -256,7 +290,7 @@ export function ExpensesPage() {
             aria-expanded={binOpen}
             className="flex w-full items-center justify-between text-left"
           >
-            <span className="overline">Recently removed ({removed.length})</span>
+            <span className="overline-label">Recently removed ({removed.length})</span>
             <ChevronDown
               size={16}
               className={`text-text-muted transition-transform ${binOpen ? 'rotate-180' : ''}`}
@@ -276,29 +310,6 @@ export function ExpensesPage() {
             </div>
           )}
         </section>
-      )}
-
-      {modal === 'add' && (
-        <Modal title="Add expense" onClose={() => setModal(null)}>
-          <ExpenseForm
-            onSubmit={handleAdd}
-            onCancel={() => setModal(null)}
-            isSubmitting={addExpense.isPending}
-            submitLabel="Add expense"
-          />
-        </Modal>
-      )}
-
-      {modal && typeof modal === 'object' && (
-        <Modal title="Edit expense" onClose={() => setModal(null)}>
-          <ExpenseForm
-            initial={modal.edit}
-            onSubmit={(values) => handleUpdate(modal.edit.id, values)}
-            onCancel={() => setModal(null)}
-            isSubmitting={updateExpense.isPending}
-            submitLabel="Save changes"
-          />
-        </Modal>
       )}
 
       {confirmForever && (

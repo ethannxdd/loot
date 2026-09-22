@@ -159,7 +159,7 @@ export function DashboardPage() {
               <RecentActivity expenses={expenses} />
 
               <div className="space-y-3">
-                <div className="overline px-1">Advanced</div>
+                <div className="overline-label px-1">Advanced</div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <LootScoreCard />
                   {/* Forecast, score, close and briefing are personal — they always use the user's own numbers. */}

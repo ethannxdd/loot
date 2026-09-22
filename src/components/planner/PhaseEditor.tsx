@@ -99,15 +99,15 @@ export function PhaseEditor({ phase, taxRatePct, onChange, onRemove }: PhaseEdit
 
       <div className="mt-4 grid grid-cols-3 gap-2 border-t border-hairline pt-3 text-center">
         <div>
-          <p className="overline">Net income</p>
+          <p className="overline-label">Net income</p>
           <p className="tnum text-sm">{formatCurrency(computed.netIncome)}</p>
         </div>
         <div>
-          <p className="overline">Expenses</p>
+          <p className="overline-label">Expenses</p>
           <p className="tnum text-sm">{formatCurrency(computed.totalExpenses)}</p>
         </div>
         <div>
-          <p className="overline">Leftover</p>
+          <p className="overline-label">Leftover</p>
           <p className={`tnum text-sm ${computed.leftover < 0 ? 'text-alert' : 'text-primary'}`}>
             {formatCurrency(computed.leftover)}
           </p>

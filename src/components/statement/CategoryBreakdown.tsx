@@ -20,7 +20,7 @@ export function CategoryBreakdown({ categoryTotals, transactions }: CategoryBrea
 
   return (
     <div className="card space-y-2">
-      <p className="overline">Category breakdown</p>
+      <p className="overline-label">Category breakdown</p>
       {entries.map(([category, amount]) => {
         const Icon = categoryIcon(category as ExpenseCategory)
         const isOpen = expanded === category

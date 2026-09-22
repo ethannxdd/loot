@@ -1,5 +1,6 @@
 import { Loader2, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Select } from '@/components/ui/Select'
 import { useAddBureauScore, useDeleteBureauScore } from '@/hooks/useBureauScores'
 import type { BureauScore, ScoreFactors } from '@/lib/types'
 
@@ -35,7 +36,7 @@ export function BureauScoreUpload({ scores, estimatedScore, factors }: BureauSco
   return (
     <div className="space-y-4">
       <div>
-        <p className="overline mb-1">Bureau score</p>
+        <p className="overline-label mb-1">Bureau score</p>
         <p className="text-xs text-muted-foreground">
           Add a real credit bureau score to see how close the Loot estimate gets — every upload helps tune the
           calculation.
@@ -47,13 +48,7 @@ export function BureauScoreUpload({ scores, estimatedScore, factors }: BureauSco
           <label className="field-label" htmlFor="bureau-select">
             Bureau
           </label>
-          <select id="bureau-select" value={bureau} onChange={(e) => setBureau(e.target.value)}>
-            {BUREAUS.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
+          <Select id="bureau-select" value={bureau} onValueChange={setBureau} options={BUREAUS.map((b) => ({ value: b, label: b }))} />
         </div>
         <div className="w-24">
           <label className="field-label" htmlFor="bureau-score">

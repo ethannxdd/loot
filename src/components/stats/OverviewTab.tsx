@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Select } from '@/components/ui/Select'
 import { monthLabel } from '@/lib/money'
 import { formatCurrency } from '@/lib/utils'
 import type { MonthlySnapshot } from '@/lib/types'
@@ -45,7 +46,7 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
     <div className="space-y-5">
       <div className="card">
         <div className="mb-3 flex items-center justify-between">
-          <span className="overline">Trend</span>
+          <span className="overline-label">Trend</span>
           <div className="flex rounded-[10px] border border-border bg-input p-1">
             {RANGES.map((r) => (
               <button
@@ -85,21 +86,16 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
       <div className="card space-y-3">
         <div className="flex items-center justify-between">
-          <span className="overline">Month-over-month</span>
-          <select
+          <span className="overline-label">Month-over-month</span>
+          <Select
             value={current?.month ?? ''}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            onValueChange={setSelectedMonth}
             className="!w-auto text-xs"
-          >
-            {snapshots
+            options={snapshots
               .slice()
               .reverse()
-              .map((s) => (
-                <option key={s.month} value={s.month}>
-                  {monthLabel(s.month)}
-                </option>
-              ))}
-          </select>
+              .map((s) => ({ value: s.month, label: monthLabel(s.month) }))}
+          />
         </div>
         {!previous && <p className="text-xs text-text-muted">Loot needs two months of data to show changes.</p>}
         <div className="space-y-2">

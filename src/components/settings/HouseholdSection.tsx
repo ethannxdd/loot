@@ -27,7 +27,7 @@ export function HouseholdSection() {
 
   return (
     <section className="card space-y-4">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <Users size={13} strokeWidth={2} /> Household
       </div>
 
@@ -148,7 +148,7 @@ function HouseholdManager({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <p className="overline">Linked partners</p>
+        <p className="overline-label">Linked partners</p>
         {partnerRows.length === 0 && pendingSentInvites.length === 0 && (
           <p className="text-xs text-text-muted">No one linked yet.</p>
         )}

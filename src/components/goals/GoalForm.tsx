@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Select } from '@/components/ui/Select'
 import { GOAL_CATEGORIES, GOAL_CATEGORY_LABELS } from '@/lib/categories'
 import type { NewGoal, SavingsGoal } from '@/lib/types'
 
@@ -71,13 +72,12 @@ export function GoalForm({
         <label className="field-label" htmlFor="goal-category">
           Category
         </label>
-        <select id="goal-category" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {GOAL_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {GOAL_CATEGORY_LABELS[c]}
-            </option>
-          ))}
-        </select>
+        <Select
+          id="goal-category"
+          value={category}
+          onValueChange={setCategory}
+          options={GOAL_CATEGORIES.map((c) => ({ value: c, label: GOAL_CATEGORY_LABELS[c] }))}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

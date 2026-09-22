@@ -24,7 +24,7 @@ export function TaxEstimateCard({ estimate }: { estimate: TaxEstimate }) {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-lg font-bold">Tax estimate — {estimate.taxYear}</h2>
         {estimate.belowThreshold && (
-          <span className="overline rounded-full bg-primary/15 px-2.5 py-1 text-primary">Below threshold</span>
+          <span className="overline-label rounded-full bg-primary/15 px-2.5 py-1 text-primary">Below threshold</span>
         )}
       </div>
 

@@ -56,7 +56,7 @@ export function HelpSection() {
 
   return (
     <section className="card space-y-5">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <HelpCircle size={13} strokeWidth={2} /> Help
       </div>
 
@@ -72,7 +72,7 @@ export function HelpSection() {
       </div>
 
       <div className="border-t border-hairline pt-4">
-        <p className="overline mb-2">Feature guide</p>
+        <p className="overline-label mb-2">Feature guide</p>
         <ul className="space-y-1">
           {NAV_GROUPS.flatMap((g) => g.items)
             .filter((item) => GUIDE[item.to])
@@ -94,7 +94,7 @@ export function HelpSection() {
       </div>
 
       <div className="border-t border-hairline pt-4">
-        <p className="overline mb-2">Frequently asked</p>
+        <p className="overline-label mb-2">Frequently asked</p>
         <div className="space-y-1">
           {FAQ.map((item) => (
             <details key={item.q} className="group rounded-[10px] px-2 py-2 hover:bg-white/[0.03]">

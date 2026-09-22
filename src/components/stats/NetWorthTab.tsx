@@ -1,10 +1,9 @@
-import { Pencil, Plus, Scale, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Pencil, Plus, Scale, Trash2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { NetWorthItemForm } from '@/components/networth/NetWorthItemForm'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
-import { Modal } from '@/components/ui/Modal'
 import {
   useCreateNetWorthItem,
   useDeleteNetWorthItem,
@@ -23,6 +22,11 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const deleteItem = useDeleteNetWorthItem()
   const [modal, setModal] = useState<'new' | NetWorthItem | null>(null)
   const [toDelete, setToDelete] = useState<NetWorthItem | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (modal) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [modal])
 
   const totals = computeNetWorthTotals(items)
   const assets = items.filter((i) => i.kind === 'asset')
@@ -38,15 +42,15 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="card">
-          <p className="overline">Assets</p>
+          <p className="overline-label">Assets</p>
           <p className="tnum text-lg text-primary">{formatCurrency(totals.assetsTotal)}</p>
         </div>
         <div className="card">
-          <p className="overline">Liabilities</p>
+          <p className="overline-label">Liabilities</p>
           <p className="tnum text-lg text-alert">{formatCurrency(totals.liabilitiesTotal)}</p>
         </div>
         <div className="card">
-          <p className="overline">Net worth</p>
+          <p className="overline-label">Net worth</p>
           <p className={`tnum text-lg ${totals.netWorth < 0 ? 'text-alert' : ''}`}>{formatCurrency(totals.netWorth)}</p>
         </div>
       </div>
@@ -59,7 +63,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
       {chartData.length >= 2 && (
         <div className="card">
-          <p className="overline mb-3">Net worth over time</p>
+          <p className="overline-label mb-3">Net worth over time</p>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
@@ -85,7 +89,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
           ] as const
         ).map(({ title, list }) => (
           <div key={title} className="card space-y-2">
-            <p className="overline">{title}</p>
+            <p className="overline-label">{title}</p>
             {list.length === 0 && <p className="py-4 text-center text-xs text-text-muted">Nothing added yet.</p>}
             {list.map((item) => (
               <div key={item.id} className="group flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-2.5">
@@ -110,15 +114,59 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setModal('new')}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary"
-      >
-        <Plus size={14} strokeWidth={2} /> Add asset or liability
-      </button>
+      {modal === null && (
+        <button
+          type="button"
+          onClick={() => setModal('new')}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary"
+        >
+          <Plus size={14} strokeWidth={2} /> Add asset or liability
+        </button>
+      )}
 
-      {items.length === 0 && !isLoading && (
+      {modal && (
+        <div ref={formRef} className="card-elevated animate-enter space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold">{modal === 'new' ? 'Add item' : 'Edit item'}</h3>
+            <button
+              type="button"
+              onClick={() => setModal(null)}
+              aria-label="Close"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
+          </div>
+          <NetWorthItemForm
+            key={modal === 'new' ? 'new' : modal.id}
+            initial={modal === 'new' ? undefined : modal}
+            isSubmitting={createItem.isPending || updateItem.isPending}
+            onCancel={() => setModal(null)}
+            onSubmit={(values) => {
+              if (modal === 'new') {
+                createItem.mutate(values, {
+                  onSuccess: () => {
+                    setModal(null)
+                    toast.success(`${values.label} added`)
+                  },
+                })
+              } else {
+                updateItem.mutate(
+                  { id: modal.id, patch: values },
+                  {
+                    onSuccess: () => {
+                      setModal(null)
+                      toast.success('Item updated')
+                    },
+                  },
+                )
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {items.length === 0 && !isLoading && !modal && (
         <div className="card-elevated flex flex-col items-center gap-3 py-10 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
             <Scale size={24} strokeWidth={1.75} />
@@ -146,35 +194,6 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
         </ConfirmModal>
       )}
 
-      {modal && (
-        <Modal title={modal === 'new' ? 'Add item' : 'Edit item'} onClose={() => setModal(null)}>
-          <NetWorthItemForm
-            initial={modal === 'new' ? undefined : modal}
-            isSubmitting={createItem.isPending || updateItem.isPending}
-            onCancel={() => setModal(null)}
-            onSubmit={(values) => {
-              if (modal === 'new') {
-                createItem.mutate(values, {
-                  onSuccess: () => {
-                    setModal(null)
-                    toast.success(`${values.label} added`)
-                  },
-                })
-              } else {
-                updateItem.mutate(
-                  { id: modal.id, patch: values },
-                  {
-                    onSuccess: () => {
-                      setModal(null)
-                      toast.success('Item updated')
-                    },
-                  },
-                )
-              }
-            }}
-          />
-        </Modal>
-      )}
     </div>
   )
 }

@@ -79,7 +79,7 @@ export function ComparePage() {
       </header>
 
       <div className="card">
-        <p className="overline mb-3">Select plans (2–4)</p>
+        <p className="overline-label mb-3">Select plans (2–4)</p>
         <div className="flex flex-wrap gap-2">
           {plans.map((plan) => {
             const isSelected = selected.includes(plan.id)
@@ -111,9 +111,9 @@ export function ComparePage() {
             <table className="w-full min-w-[480px] border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="overline pb-3 text-left">Metric</th>
+                  <th className="overline-label pb-3 text-left">Metric</th>
                   {selectedPlans.map((plan) => (
-                    <th key={plan.id} className="overline pb-3 text-right">
+                    <th key={plan.id} className="overline-label pb-3 text-right">
                       {plan.name}
                     </th>
                   ))}

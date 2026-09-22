@@ -27,7 +27,7 @@ export function ForecastCard({ snapshots, expenses, netIncome }: ForecastCardPro
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <TrendingUp size={13} strokeWidth={2} /> Forecast
         </div>
         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${confidence.className}`}>

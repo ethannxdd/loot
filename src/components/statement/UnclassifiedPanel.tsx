@@ -1,9 +1,32 @@
 import { HelpCircle } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { Select } from '@/components/ui/Select'
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { merchantKey } from '@/lib/statement'
 import { formatCurrency } from '@/lib/utils'
 import type { ParsedTransaction } from '@/lib/types'
+
+const CATEGORY_OPTIONS = EXPENSE_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))
+
+/** Its own tiny component so each row keeps its own picked-value state (the select is a
+ *  controlled component now, unlike the native <select defaultValue> this replaces). */
+function CategorySelect({ label, onAssign }: { label: string; onAssign: (category: ExpenseCategory) => void }) {
+  const [value, setValue] = useState('')
+  return (
+    <div className="w-full min-w-40 sm:w-52">
+      <Select
+        value={value}
+        onValueChange={(v) => {
+          setValue(v)
+          onAssign(v as ExpenseCategory)
+        }}
+        placeholder="Choose category…"
+        aria-label={`Category for ${label}`}
+        options={CATEGORY_OPTIONS}
+      />
+    </div>
+  )
+}
 
 interface UnclassifiedPanelProps {
   transactions: ParsedTransaction[]
@@ -61,23 +84,7 @@ export function UnclassifiedPanel({ transactions, onAssign }: UnclassifiedPanelP
                 {formatCurrency(g.total)} · {g.count} transaction{g.count === 1 ? '' : 's'}
               </p>
             </div>
-            <select
-              aria-label={`Category for ${g.label}`}
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) onAssign(g.sample, e.target.value as ExpenseCategory)
-              }}
-              className="!w-auto min-w-40 !py-1.5 text-xs"
-            >
-              <option value="" disabled>
-                Choose category…
-              </option>
-              {EXPENSE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </option>
-              ))}
-            </select>
+            <CategorySelect label={g.label} onAssign={(c) => onAssign(g.sample, c)} />
           </div>
         ))}
         {groups.length > 25 && (

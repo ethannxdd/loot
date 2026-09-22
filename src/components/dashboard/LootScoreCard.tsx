@@ -24,7 +24,7 @@ export function LootScoreCard() {
   if (!latest) {
     return (
       <div className="card space-y-2">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Shield size={13} strokeWidth={2} /> Loot Score
         </div>
         <p className="text-sm text-muted-foreground">
@@ -41,7 +41,7 @@ export function LootScoreCard() {
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Shield size={13} strokeWidth={2} /> Loot Score
         </div>
         {delta !== null && delta !== 0 && (
@@ -78,7 +78,7 @@ export function LootScoreCard() {
 
           {recommendations.length > 0 && (
             <div className="space-y-2">
-              <p className="overline">Recommendations</p>
+              <p className="overline-label">Recommendations</p>
               <ul className="space-y-1.5">
                 {recommendations.map((r) => (
                   <li key={r.factor} className="text-xs leading-relaxed text-muted-foreground">

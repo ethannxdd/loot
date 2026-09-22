@@ -2,6 +2,7 @@ import { Check, Loader2, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { Select } from '@/components/ui/Select'
 import {
   useAddIncomeStream,
   useDeleteIncomeStream,
@@ -102,7 +103,7 @@ export function IncomeSection({ profile }: { profile: Profile }) {
   return (
     <>
       <form onSubmit={saveTotals} className="card space-y-4">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Wallet size={13} strokeWidth={2} /> Monthly income
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -133,7 +134,7 @@ export function IncomeSection({ profile }: { profile: Profile }) {
 
       <section className="card space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="overline">Income streams</div>
+          <div className="overline-label">Income streams</div>
           {editing === null && (
             <button type="button" onClick={() => openForm()} className="btn btn-ghost !h-8 !px-3 !text-xs">
               <Plus size={14} strokeWidth={2} /> Add stream
@@ -234,13 +235,12 @@ export function IncomeSection({ profile }: { profile: Profile }) {
                 <label className="field-label" htmlFor="stream-frequency">
                   How often
                 </label>
-                <select id="stream-frequency" value={sFreq} onChange={(e) => setSFreq(e.target.value as IncomeFrequency)}>
-                  {(Object.keys(FREQUENCY_LABELS) as IncomeFrequency[]).map((f) => (
-                    <option key={f} value={f}>
-                      {FREQUENCY_LABELS[f]}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  id="stream-frequency"
+                  value={sFreq}
+                  onValueChange={(v) => setSFreq(v as IncomeFrequency)}
+                  options={(Object.keys(FREQUENCY_LABELS) as IncomeFrequency[]).map((f) => ({ value: f, label: FREQUENCY_LABELS[f] }))}
+                />
               </div>
             </div>
             <div className="flex gap-3">

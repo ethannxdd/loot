@@ -65,7 +65,7 @@ export function PlanCard({ plan, onEdit, onDelete }: PlanCardProps) {
 
       <div className="flex items-center justify-between border-t border-hairline pt-3">
         <div>
-          <p className="overline">Total leftover</p>
+          <p className="overline-label">Total leftover</p>
           <p className={`tnum text-lg ${totalLeftover < 0 ? 'text-alert' : 'text-primary'}`}>
             {formatCurrency(totalLeftover)}
           </p>

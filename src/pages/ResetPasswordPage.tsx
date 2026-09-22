@@ -3,6 +3,7 @@ import { KeyRound, Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/ui/Logo'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useAuth } from '@/hooks/useAuth'
 
 /** Landing page for the link in a password-reset email. */
@@ -41,9 +42,8 @@ export function ResetPasswordPage() {
               <label className="field-label" htmlFor="new-password">
                 New password
               </label>
-              <input
+              <PasswordInput
                 id="new-password"
-                type="password"
                 required
                 minLength={6}
                 autoComplete="new-password"
@@ -55,9 +55,8 @@ export function ResetPasswordPage() {
               <label className="field-label" htmlFor="confirm-password">
                 Confirm password
               </label>
-              <input
+              <PasswordInput
                 id="confirm-password"
-                type="password"
                 required
                 minLength={6}
                 autoComplete="new-password"

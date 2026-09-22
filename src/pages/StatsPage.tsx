@@ -57,7 +57,7 @@ export function StatsPage() {
 
       {checks.length > 0 && (
         <section className="space-y-2">
-          <div className="overline px-1">Affordability check history</div>
+          <div className="overline-label px-1">Affordability check history</div>
           <CheckHistoryList checks={checks} />
         </section>
       )}

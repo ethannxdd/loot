@@ -1,6 +1,7 @@
 import { Loader2, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Logo } from '@/components/ui/Logo'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useAuth } from '@/hooks/useAuth'
 
 type Mode = 'signin' | 'signup' | 'forgot'
@@ -189,9 +190,8 @@ export function AuthPage() {
                     </button>
                   )}
                 </div>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   required
                   minLength={6}
                   autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}

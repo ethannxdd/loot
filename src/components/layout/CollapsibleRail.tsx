@@ -1,7 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { LogOut, PanelLeft } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { Logo } from '@/components/ui/Logo'
 import { useAuth } from '@/hooks/useAuth'
@@ -10,6 +10,10 @@ import { isActivePath, NAV_GROUPS } from '@/lib/nav'
 const PIN_STORAGE_KEY = 'loot:rail-pinned'
 const COLLAPSED_WIDTH = 84
 const EXPANDED_WIDTH = 260
+// Hover must be sustained this long before the rail expands — a bare hover-through (moving the
+// pointer across the collapsed rail on the way to a known icon) should never trigger it. Collapse
+// on mouse-leave stays instant; only the expand side needs the intent check.
+const HOVER_INTENT_MS = 350
 
 function readStoredPin(): boolean {
   try {
@@ -33,6 +37,7 @@ export function CollapsibleRail() {
   const [focused, setFocused] = useState(false)
   const prefersReducedMotion = useReducedMotion()
   const expanded = pinned || hovering || focused
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     try {
@@ -42,12 +47,33 @@ export function CollapsibleRail() {
     }
   }, [pinned])
 
+  // Clear any pending expand timer on unmount so it never fires against an unmounted component.
+  useEffect(() => () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+  }, [])
+
+  function handleMouseEnter() {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    hoverTimer.current = setTimeout(() => {
+      hoverTimer.current = null
+      setHovering(true)
+    }, HOVER_INTENT_MS)
+  }
+
+  function handleMouseLeave() {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current)
+      hoverTimer.current = null
+    }
+    setHovering(false)
+  }
+
   const labelClass = (extra = '') => `rail-label ${expanded ? 'rail-label-visible' : ''} ${extra}`.trim()
 
   return (
     <motion.aside
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onFocusCapture={() => setFocused(true)}
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocused(false)
@@ -82,7 +108,7 @@ export function CollapsibleRail() {
           {NAV_GROUPS.map((group, i) => (
             <div key={group.label}>
               {i > 0 && <div className="rail-divider" />}
-              {expanded && <div className="overline mb-1 px-3">{group.label}</div>}
+              {expanded && <div className="overline-label mb-1 px-3">{group.label}</div>}
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = isActivePath(pathname, item.to)

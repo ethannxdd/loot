@@ -21,7 +21,7 @@ export function AnalysisHistory({ analyses }: AnalysisHistoryProps) {
 
   return (
     <div className="card space-y-2">
-      <p className="overline">Analysis history</p>
+      <p className="overline-label">Analysis history</p>
       {analyses.map((a) => (
         <div key={a.id} className="flex items-center gap-3 rounded-lg bg-surface-2 px-3.5 py-2.5 text-sm">
           <div className="min-w-0 flex-1">

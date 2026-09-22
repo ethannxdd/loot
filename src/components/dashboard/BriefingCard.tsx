@@ -12,7 +12,7 @@ export function BriefingCard({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   if (!latest) {
     return (
       <div className="card space-y-2">
-        <div className="overline flex items-center gap-1.5">
+        <div className="overline-label flex items-center gap-1.5">
           <Newspaper size={13} strokeWidth={2} /> Briefing
         </div>
         <p className="text-sm text-muted-foreground">
@@ -24,7 +24,7 @@ export function BriefingCard({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
   return (
     <div className="card space-y-3">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <Newspaper size={13} strokeWidth={2} /> Briefing — {monthLabel(latest.month)}
       </div>
       <ul className="space-y-1.5">

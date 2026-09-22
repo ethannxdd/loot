@@ -125,7 +125,7 @@ export function LandingPage() {
 
           <div className="animate-enter stagger-2 mx-auto w-full max-w-sm">
             <div className="card-elevated space-y-4 bg-background/95 p-5 backdrop-blur-xl">
-              <div className="overline">This month</div>
+              <div className="overline-label">This month</div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-hairline bg-surface-2 p-3">
                   <p className="text-[10px] font-semibold text-text-muted">Available</p>
@@ -158,7 +158,7 @@ export function LandingPage() {
       {/* Features */}
       <section id="features" className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
         <div className="mx-auto max-w-xl text-center">
-          <div className="overline">Everything, in one place</div>
+          <div className="overline-label">Everything, in one place</div>
           <h2 className="mt-2 text-[28px] font-bold tracking-[-0.02em] md:text-4xl">
             Built to answer one question, properly
           </h2>
@@ -185,7 +185,7 @@ export function LandingPage() {
       <section className="border-y border-hairline bg-surface/40">
         <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-xl text-center">
-            <div className="overline">How it works</div>
+            <div className="overline-label">How it works</div>
             <h2 className="mt-2 text-[28px] font-bold tracking-[-0.02em] md:text-4xl">
               Three steps to your number
             </h2>
@@ -208,7 +208,7 @@ export function LandingPage() {
       {/* Trust strip */}
       <section className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
         <div className="mx-auto max-w-xl text-center">
-          <div className="overline">Built for South Africa</div>
+          <div className="overline-label">Built for South Africa</div>
           <h2 className="mt-2 text-[28px] font-bold tracking-[-0.02em] md:text-4xl">
             Made for how South Africans actually bank
           </h2>

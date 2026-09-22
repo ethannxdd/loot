@@ -1,4 +1,4 @@
-import { Calculator, Plus, Wallet } from 'lucide-react'
+import { Calculator, Plus, Wallet, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { DebtForm } from '@/components/planner/DebtForm'
@@ -7,7 +7,6 @@ import { DebtStrategyComparison } from '@/components/planner/DebtStrategyCompari
 import { PlanCard } from '@/components/planner/PlanCard'
 import { PlanEditor } from '@/components/planner/PlanEditor'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
-import { Modal } from '@/components/ui/Modal'
 import { useCreateDebt, useDebts, useDeleteDebt, useUpdateDebt } from '@/hooks/useDebts'
 import {
   useCreatePlannerPlan,
@@ -37,6 +36,8 @@ export function PlannerPage() {
   const [planToDelete, setPlanToDelete] = useState<PlannerPlan | null>(null)
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null)
   const [extraPayment, setExtraPayment] = useState(profile?.debt_extra_payment ?? 0)
+  const planFormRef = useRef<HTMLElement>(null)
+  const debtFormRef = useRef<HTMLElement>(null)
 
   // The saved extra payment may arrive after this page mounts; adopt it once, without overwriting typing.
   const adoptedExtra = useRef(Boolean(profile))
@@ -46,6 +47,14 @@ export function PlannerPage() {
       setExtraPayment(profile.debt_extra_payment ?? 0)
     }
   }, [profile])
+
+  useEffect(() => {
+    if (planModal) planFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [planModal])
+
+  useEffect(() => {
+    if (debtModal) debtFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [debtModal])
 
   return (
     <div className="animate-enter space-y-8">
@@ -66,6 +75,48 @@ export function PlannerPage() {
           <Calculator size={18} strokeWidth={1.75} className="text-secondary" />
           <h2 className="text-lg font-bold">Salary plans</h2>
         </div>
+
+        {planModal && (
+          <section ref={planFormRef} className="card-elevated animate-enter space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">{planModal === 'new' ? 'New plan' : 'Edit plan'}</h3>
+              <button
+                type="button"
+                onClick={() => setPlanModal(null)}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                <X size={16} strokeWidth={1.75} />
+              </button>
+            </div>
+            <PlanEditor
+              key={planModal === 'new' ? 'new' : planModal.id}
+              initial={planModal === 'new' ? undefined : planModal}
+              isSubmitting={createPlan.isPending || updatePlan.isPending}
+              onCancel={() => setPlanModal(null)}
+              onSubmit={(values) => {
+                if (planModal === 'new') {
+                  createPlan.mutate(values, {
+                    onSuccess: () => {
+                      setPlanModal(null)
+                      toast.success(`${values.name} created`)
+                    },
+                  })
+                } else {
+                  updatePlan.mutate(
+                    { id: planModal.id, patch: values },
+                    {
+                      onSuccess: () => {
+                        setPlanModal(null)
+                        toast.success('Plan saved')
+                      },
+                    },
+                  )
+                }
+              }}
+            />
+          </section>
+        )}
 
         {plansLoading ? (
           <div className="skeleton h-40 rounded-2xl" />
@@ -128,6 +179,49 @@ export function PlannerPage() {
           </button>
         </div>
 
+        {debtModal && (
+          <section ref={debtFormRef} className="card-elevated animate-enter space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">{debtModal === 'new' ? 'Add debt' : 'Edit debt'}</h3>
+              <button
+                type="button"
+                onClick={() => setDebtModal(null)}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                <X size={16} strokeWidth={1.75} />
+              </button>
+            </div>
+            <DebtForm
+              key={debtModal === 'new' ? 'new' : debtModal.id}
+              initial={debtModal === 'new' ? undefined : debtModal}
+              submitLabel={debtModal === 'new' ? 'Add debt' : 'Save debt'}
+              isSubmitting={createDebt.isPending || updateDebt.isPending}
+              onCancel={() => setDebtModal(null)}
+              onSubmit={(values) => {
+                if (debtModal === 'new') {
+                  createDebt.mutate(values, {
+                    onSuccess: () => {
+                      setDebtModal(null)
+                      toast.success(`${values.name} added`)
+                    },
+                  })
+                } else {
+                  updateDebt.mutate(
+                    { id: debtModal.id, patch: values },
+                    {
+                      onSuccess: () => {
+                        setDebtModal(null)
+                        toast.success('Debt saved')
+                      },
+                    },
+                  )
+                }
+              }}
+            />
+          </section>
+        )}
+
         <DebtStrategyComparison
           debts={debts}
           extraPayment={extraPayment}
@@ -148,67 +242,6 @@ export function PlannerPage() {
           }
         />
       </section>
-
-      {planModal && (
-        <Modal title={planModal === 'new' ? 'New plan' : 'Edit plan'} onClose={() => setPlanModal(null)}>
-          <PlanEditor
-            initial={planModal === 'new' ? undefined : planModal}
-            isSubmitting={createPlan.isPending || updatePlan.isPending}
-            onCancel={() => setPlanModal(null)}
-            onSubmit={(values) => {
-              if (planModal === 'new') {
-                createPlan.mutate(values, {
-                  onSuccess: () => {
-                    setPlanModal(null)
-                    toast.success(`${values.name} created`)
-                  },
-                })
-              } else {
-                updatePlan.mutate(
-                  { id: planModal.id, patch: values },
-                  {
-                    onSuccess: () => {
-                      setPlanModal(null)
-                      toast.success('Plan saved')
-                    },
-                  },
-                )
-              }
-            }}
-          />
-        </Modal>
-      )}
-
-      {debtModal && (
-        <Modal title={debtModal === 'new' ? 'Add debt' : 'Edit debt'} onClose={() => setDebtModal(null)}>
-          <DebtForm
-            initial={debtModal === 'new' ? undefined : debtModal}
-            submitLabel={debtModal === 'new' ? 'Add debt' : 'Save debt'}
-            isSubmitting={createDebt.isPending || updateDebt.isPending}
-            onCancel={() => setDebtModal(null)}
-            onSubmit={(values) => {
-              if (debtModal === 'new') {
-                createDebt.mutate(values, {
-                  onSuccess: () => {
-                    setDebtModal(null)
-                    toast.success(`${values.name} added`)
-                  },
-                })
-              } else {
-                updateDebt.mutate(
-                  { id: debtModal.id, patch: values },
-                  {
-                    onSuccess: () => {
-                      setDebtModal(null)
-                      toast.success('Debt saved')
-                    },
-                  },
-                )
-              }
-            }}
-          />
-        </Modal>
-      )}
 
       {planToDelete && (
         <ConfirmModal

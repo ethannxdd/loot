@@ -15,7 +15,7 @@ export function UpcomingDebits({ expenses }: { expenses: Expense[] }) {
 
   return (
     <div className="card space-y-3">
-      <div className="overline">Upcoming debits</div>
+      <div className="overline-label">Upcoming debits</div>
       {upcoming.length === 0 ? (
         <p className="text-xs text-text-muted">Nothing due in the next {WINDOW_DAYS} days.</p>
       ) : (

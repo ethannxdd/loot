@@ -19,7 +19,7 @@ export function QuickAddExpense() {
 
   return (
     <div className="card space-y-3">
-      <div className="overline">Quick-add expense</div>
+      <div className="overline-label">Quick-add expense</div>
       <ExpenseForm
         key={formKey}
         compact

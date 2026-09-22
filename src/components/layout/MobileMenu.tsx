@@ -64,7 +64,7 @@ export function MobileMenu() {
             <div className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
               {NAV_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <div className="overline mb-1.5 px-3">{group.label}</div>
+                  <div className="overline-label mb-1.5 px-3">{group.label}</div>
                   <div className="space-y-0.5">
                     {group.items.map((item) => {
                       const isActive = isActivePath(pathname, item.to)

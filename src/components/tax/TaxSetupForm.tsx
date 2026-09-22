@@ -1,11 +1,13 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Select } from '@/components/ui/Select'
 import { EMPLOYMENT_TYPES, type EmploymentType, type NewTaxProfile, type TaxProfile } from '@/lib/types'
 
 interface TaxSetupFormProps {
   initial?: TaxProfile | null
   isSubmitting?: boolean
   onSubmit: (values: NewTaxProfile) => void
+  onCancel?: () => void
 }
 
 const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
@@ -16,7 +18,7 @@ const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
   other: 'Other',
 }
 
-export function TaxSetupForm({ initial, isSubmitting, onSubmit }: TaxSetupFormProps) {
+export function TaxSetupForm({ initial, isSubmitting, onSubmit, onCancel }: TaxSetupFormProps) {
   const [age, setAge] = useState(initial?.age?.toString() ?? '30')
   const [employmentType, setEmploymentType] = useState<EmploymentType>(initial?.employment_type ?? 'salaried')
   const [isProvisional, setIsProvisional] = useState(initial?.is_provisional_taxpayer === 'yes')
@@ -66,13 +68,12 @@ export function TaxSetupForm({ initial, isSubmitting, onSubmit }: TaxSetupFormPr
           <label className="field-label" htmlFor="tax-employment">
             Employment type
           </label>
-          <select id="tax-employment" value={employmentType} onChange={(e) => setEmploymentType(e.target.value as EmploymentType)}>
-            {EMPLOYMENT_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {EMPLOYMENT_LABELS[t]}
-              </option>
-            ))}
-          </select>
+          <Select
+            id="tax-employment"
+            value={employmentType}
+            onValueChange={(v) => setEmploymentType(v as EmploymentType)}
+            options={EMPLOYMENT_TYPES.map((t) => ({ value: t, label: EMPLOYMENT_LABELS[t] }))}
+          />
         </div>
       </div>
 
@@ -141,10 +142,17 @@ export function TaxSetupForm({ initial, isSubmitting, onSubmit }: TaxSetupFormPr
         )}
       </div>
 
-      <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
-        {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-        {initial ? 'Save changes' : 'Continue'}
-      </button>
+      <div className="flex gap-3">
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="btn btn-ghost flex-1">
+            Cancel
+          </button>
+        )}
+        <button type="submit" disabled={isSubmitting} className="btn btn-primary flex-1">
+          {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+          {initial ? 'Save changes' : 'Continue'}
+        </button>
+      </div>
     </form>
   )
 }

@@ -21,7 +21,7 @@ export function AvailableLootHero({ value, delta, sparkline }: AvailableLootHero
     <div className="hero-card">
       <div className="flex flex-col gap-2 p-7 pb-0 sm:p-9 sm:pb-0">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="overline">Available loot</div>
+          <div className="overline-label">Available loot</div>
           {delta !== null && (
             <span
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${

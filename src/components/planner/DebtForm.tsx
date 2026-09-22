@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Select } from '@/components/ui/Select'
 import { DEBT_ACCOUNT_TYPES, DEBT_ACCOUNT_TYPE_LABELS, type Debt, type DebtAccountType, type NewDebt } from '@/lib/types'
 
 interface DebtFormProps {
@@ -53,13 +54,12 @@ export function DebtForm({ initial, isSubmitting, submitLabel = 'Add debt', onSu
         <label className="field-label" htmlFor="debt-type">
           Account type
         </label>
-        <select id="debt-type" value={accountType} onChange={(e) => setAccountType(e.target.value as DebtAccountType)}>
-          {DEBT_ACCOUNT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {DEBT_ACCOUNT_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
+        <Select
+          id="debt-type"
+          value={accountType}
+          onValueChange={(v) => setAccountType(v as DebtAccountType)}
+          options={DEBT_ACCOUNT_TYPES.map((t) => ({ value: t, label: DEBT_ACCOUNT_TYPE_LABELS[t] }))}
+        />
       </div>
 
       <div>

@@ -1,6 +1,7 @@
 import { Loader2, User } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
+import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/hooks/useAuth'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { CURRENCIES, CURRENCY_LABELS, PAY_FREQUENCIES, type CurrencyCode, type PayFrequency, type Profile } from '@/lib/types'
@@ -37,7 +38,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <User size={13} strokeWidth={2} /> Profile
       </div>
 
@@ -58,25 +59,23 @@ export function ProfileSection({ profile }: { profile: Profile }) {
           <label className="field-label" htmlFor="settings-currency">
             Currency
           </label>
-          <select id="settings-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {currencyOptions.map((code) => (
-              <option key={code} value={code}>
-                {CURRENCY_LABELS[code as CurrencyCode] ?? code}
-              </option>
-            ))}
-          </select>
+          <Select
+            id="settings-currency"
+            value={currency}
+            onValueChange={setCurrency}
+            options={currencyOptions.map((code) => ({ value: code, label: CURRENCY_LABELS[code as CurrencyCode] ?? code }))}
+          />
         </div>
         <div>
           <label className="field-label" htmlFor="settings-frequency">
             Pay frequency
           </label>
-          <select id="settings-frequency" value={frequency} onChange={(e) => setFrequency(e.target.value)}>
-            {PAY_FREQUENCIES.map((f) => (
-              <option key={f} value={f}>
-                {FREQUENCY_LABELS[f]}
-              </option>
-            ))}
-          </select>
+          <Select
+            id="settings-frequency"
+            value={frequency}
+            onValueChange={setFrequency}
+            options={PAY_FREQUENCIES.map((f) => ({ value: f, label: FREQUENCY_LABELS[f] }))}
+          />
         </div>
       </div>
       {currency !== profile.currency_code && (

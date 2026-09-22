@@ -8,6 +8,7 @@ import { SubscriptionAudit } from '@/components/statement/SubscriptionAudit'
 import { UnclassifiedPanel } from '@/components/statement/UnclassifiedPanel'
 import { UploadZone } from '@/components/statement/UploadZone'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useAddExpense, useExpenses } from '@/hooks/useExpenses'
 import { useSaveStatementAnalysis, useStatementAnalyses } from '@/hooks/useStatementAnalyses'
 import { useSubscriptionReviews, useUpsertSubscription } from '@/hooks/useSubscriptionReviews'
@@ -209,15 +210,16 @@ export function StatementPage() {
             the file and is never sent anywhere.
           </p>
           <div className="flex gap-2">
-            <input
-              type="password"
-              autoComplete="off"
-              autoFocus
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="PDF password"
-              aria-label="PDF password"
-            />
+            <div className="flex-1">
+              <PasswordInput
+                autoComplete="off"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="PDF password"
+                aria-label="PDF password"
+              />
+            </div>
             <button type="submit" disabled={!password || isProcessing} className="btn btn-primary shrink-0">
               {isProcessing && <Loader2 size={16} className="animate-spin" />}
               Unlock
@@ -250,25 +252,25 @@ export function StatementPage() {
             <div className="card space-y-1">
               <div className="flex items-center gap-1.5 text-primary">
                 <ArrowUpCircle size={14} strokeWidth={1.75} />
-                <p className="overline !text-primary">Total in</p>
+                <p className="overline-label !text-primary">Total in</p>
               </div>
               <p className="tnum text-lg">{formatCurrency(summary.totalIncome)}</p>
             </div>
             <div className="card space-y-1">
               <div className="flex items-center gap-1.5 text-secondary">
                 <ArrowDownCircle size={14} strokeWidth={1.75} />
-                <p className="overline !text-secondary">Total spent</p>
+                <p className="overline-label !text-secondary">Total spent</p>
               </div>
               <p className="tnum text-lg">{formatCurrency(summary.totalSpent)}</p>
             </div>
             <div className="card space-y-1">
-              <p className="overline">Net position</p>
+              <p className="overline-label">Net position</p>
               <p className={`tnum text-lg ${summary.netPosition < 0 ? 'text-alert' : 'text-primary'}`}>
                 {formatCurrency(summary.netPosition)}
               </p>
             </div>
             <div className="card space-y-1">
-              <p className="overline">Unclassified</p>
+              <p className="overline-label">Unclassified</p>
               <p className="tnum text-lg">{formatCurrency(summary.unclassifiedAmount)}</p>
             </div>
           </div>

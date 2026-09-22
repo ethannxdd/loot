@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Select } from '@/components/ui/Select'
 import { useProfile } from '@/hooks/useProfile'
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from '@/lib/categories'
 import {
@@ -132,17 +133,12 @@ export function ExpenseForm({
           <label className="field-label" htmlFor="expense-frequency">
             Frequency
           </label>
-          <select
+          <Select
             id="expense-frequency"
             value={frequency}
-            onChange={(e) => setFrequency(e.target.value as ExpenseFrequency)}
-          >
-            {EXPENSE_FREQUENCIES.map((f) => (
-              <option key={f} value={f}>
-                {FREQUENCY_LABELS[f]}
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => setFrequency(v as ExpenseFrequency)}
+            options={EXPENSE_FREQUENCIES.map((f) => ({ value: f, label: FREQUENCY_LABELS[f] }))}
+          />
         </div>
       </div>
 
@@ -152,14 +148,12 @@ export function ExpenseForm({
             <label className="field-label" htmlFor="expense-currency">
               Currency
             </label>
-            <select id="expense-currency" value={currencyChoice} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                  {c === homeCurrency ? ' (home)' : ''}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="expense-currency"
+              value={currencyChoice}
+              onValueChange={setCurrency}
+              options={CURRENCIES.map((c) => ({ value: c, label: c === homeCurrency ? `${c} (home)` : c }))}
+            />
           </div>
           {isForeign && (
             <div>
@@ -191,13 +185,12 @@ export function ExpenseForm({
         <label className="field-label" htmlFor="expense-category">
           Category
         </label>
-        <select id="expense-category" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {EXPENSE_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {CATEGORY_LABELS[c]}
-            </option>
-          ))}
-        </select>
+        <Select
+          id="expense-category"
+          value={category}
+          onValueChange={setCategory}
+          options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
+        />
       </div>
 
       {!compact && (
@@ -257,17 +250,15 @@ export function ExpenseForm({
               <label className="field-label" htmlFor="expense-lead-days">
                 Remind me
               </label>
-              <select
+              <Select
                 id="expense-lead-days"
-                value={leadDays}
-                onChange={(e) => setLeadDays(Number(e.target.value))}
-              >
-                {LEAD_DAY_OPTIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {d} day{d === 1 ? '' : 's'} before it's due
-                  </option>
-                ))}
-              </select>
+                value={leadDays.toString()}
+                onValueChange={(v) => setLeadDays(Number(v))}
+                options={LEAD_DAY_OPTIONS.map((d) => ({
+                  value: d.toString(),
+                  label: `${d} day${d === 1 ? '' : 's'} before it's due`,
+                }))}
+              />
             </div>
           )}
 

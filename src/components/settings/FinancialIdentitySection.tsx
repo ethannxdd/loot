@@ -22,7 +22,7 @@ export function FinancialIdentitySection() {
 
   return (
     <section className="card space-y-4">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <Fingerprint size={13} strokeWidth={2} /> Your financial profile
       </div>
 
@@ -37,7 +37,7 @@ export function FinancialIdentitySection() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {identity.dimensions.map((d) => (
               <div key={d.label} className="rounded-xl border border-hairline p-4">
-                <p className="overline">{d.label}</p>
+                <p className="overline-label">{d.label}</p>
                 <p className={`mt-2 inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${TONE_CLASS[d.tone]}`}>{d.value}</p>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{d.explain}</p>
               </div>

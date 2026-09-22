@@ -21,7 +21,7 @@ export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
   return (
     <div className="card space-y-3">
       <div className="flex items-center justify-between">
-        <p className="overline">Subscription audit</p>
+        <p className="overline-label">Subscription audit</p>
         <span className="tnum text-xs text-muted-foreground">{formatCurrency(totalMonthly)}/mo active</span>
       </div>
       <div className="space-y-2">

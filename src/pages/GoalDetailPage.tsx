@@ -1,11 +1,10 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Loader2, Pause, Play, Sparkles, Target, Trash2 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { ArrowLeft, Loader2, Pause, Play, Sparkles, Target, Trash2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { GoalForm } from '@/components/goals/GoalForm'
 import { PauseGoalModal } from '@/components/goals/PauseGoalModal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
-import { Modal } from '@/components/ui/Modal'
 import {
   useAddContribution,
   useDeleteContribution,
@@ -35,6 +34,11 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
   const [pauseOpen, setPauseOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [entryToRemove, setEntryToRemove] = useState<GoalContribution | null>(null)
+  const editFormRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (editOpen) editFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [editOpen])
 
   if (isLoading) return <div className="skeleton h-40 rounded-2xl" />
 
@@ -215,9 +219,32 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
         )}
       </div>
 
+      {editOpen && (
+        <section ref={editFormRef} className="card-elevated animate-enter space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold">Edit goal</h2>
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              aria-label="Close"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
+          </div>
+          <GoalForm
+            initial={goal}
+            onSubmit={handleEdit}
+            onCancel={() => setEditOpen(false)}
+            isSubmitting={updateGoal.isPending}
+            submitLabel="Save changes"
+          />
+        </section>
+      )}
+
       <form onSubmit={handleSubmitAmount} className="card space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="overline">{mode === 'add' ? 'Add money' : 'Take money out'}</div>
+          <div className="overline-label">{mode === 'add' ? 'Add money' : 'Take money out'}</div>
           <div className="flex gap-1 rounded-[10px] border border-border bg-input p-1 text-xs font-semibold">
             <button
               type="button"
@@ -257,7 +284,7 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
       </form>
 
       <div className="space-y-2">
-        <div className="overline px-1">History</div>
+        <div className="overline-label px-1">History</div>
         {contributions.length === 0 ? (
           <p className="px-1 text-sm text-text-muted">Nothing logged yet.</p>
         ) : (
@@ -287,18 +314,6 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
           </div>
         )}
       </div>
-
-      {editOpen && (
-        <Modal title="Edit goal" onClose={() => setEditOpen(false)}>
-          <GoalForm
-            initial={goal}
-            onSubmit={handleEdit}
-            onCancel={() => setEditOpen(false)}
-            isSubmitting={updateGoal.isPending}
-            submitLabel="Save changes"
-          />
-        </Modal>
-      )}
 
       {pauseOpen && (
         <PauseGoalModal goal={goal} isPending={updateGoal.isPending} onConfirm={handlePause} onCancel={() => setPauseOpen(false)} />

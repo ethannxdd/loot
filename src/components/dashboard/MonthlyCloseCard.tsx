@@ -1,6 +1,5 @@
-import { CalendarCheck, ChevronLeft, ChevronRight, Download, Lock } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { Modal } from '@/components/ui/Modal'
+import { CalendarCheck, ChevronLeft, ChevronRight, Download, Lock, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useCurrentMonthSnapshot, useLockCurrentMonth } from '@/hooks/useMonthlyClose'
 import { useProfile } from '@/hooks/useProfile'
 import { useExpenses } from '@/hooks/useExpenses'
@@ -20,6 +19,11 @@ export function MonthlyCloseCard() {
   const [step, setStep] = useState(0)
   const [notes, setNotes] = useState('')
   const summaryRef = useRef<HTMLDivElement>(null)
+  const wizardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (wizardOpen) wizardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [wizardOpen])
 
   if (isLoading || !profile) return <div className="skeleton h-40 rounded-2xl" />
 
@@ -41,7 +45,7 @@ export function MonthlyCloseCard() {
 
   return (
     <div className="card space-y-4">
-      <div className="overline flex items-center gap-1.5">
+      <div className="overline-label flex items-center gap-1.5">
         <CalendarCheck size={13} strokeWidth={2} /> Monthly close
       </div>
 
@@ -58,6 +62,119 @@ export function MonthlyCloseCard() {
             <Download size={14} strokeWidth={1.75} />
             Export PDF summary
           </button>
+        </div>
+      ) : wizardOpen ? (
+        <div ref={wizardRef} className="animate-enter space-y-5">
+          <div className="flex items-center justify-between">
+            <span className="overline-label">
+              Step {step + 1} of {STEPS.length} · {STEPS[step]}
+            </span>
+            <button
+              type="button"
+              onClick={() => setWizardOpen(false)}
+              aria-label="Close"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
+          </div>
+
+          {step === 0 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Does this month's income look right?</p>
+              <div className="card-purple space-y-2 p-4">
+                <div className="flex justify-between text-sm">
+                  <span>Gross income</span>
+                  <span className="tnum font-semibold">{formatCurrency(profile.gross_income)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Net income</span>
+                  <span className="tnum font-semibold">{formatCurrency(profile.net_income)}</span>
+                </div>
+              </div>
+              <p className="text-xs text-text-muted">Update this in Settings first if it's changed.</p>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Confirm your fixed expenses for the month.</p>
+              {fixed.length === 0 && <p className="text-xs text-text-muted">No fixed expenses tracked.</p>}
+              {fixed.map((e) => (
+                <div key={e.id} className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                  <span>{e.name}</span>
+                  <span className="tnum">{formatCurrency(monthlyEquivalent(e))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Review your variable expenses.</p>
+              {variable.length === 0 && <p className="text-xs text-text-muted">No variable expenses tracked.</p>}
+              {variable.map((e) => (
+                <div key={e.id} className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                  <span>{e.name}</span>
+                  <span className="tnum">{formatCurrency(monthlyEquivalent(e))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-2">
+              <label className="field-label" htmlFor="close-notes">
+                Anything worth remembering about this month?
+              </label>
+              <textarea
+                id="close-notes"
+                rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional notes — one-off costs, changes to income, etc."
+              />
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Locking freezes this month's numbers in your history — they won't change even if you edit expenses
+                later.
+              </p>
+              <div className="card-purple space-y-2 p-4 text-sm">
+                <div className="flex justify-between">
+                  <span>Disposable income</span>
+                  <span className="tnum font-semibold">
+                    {formatCurrency(profile.net_income - fixed.reduce((s, e) => s + monthlyEquivalent(e), 0) - variable.reduce((s, e) => s + monthlyEquivalent(e), 0))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            {step > 0 && (
+              <button type="button" onClick={() => setStep((s) => s - 1)} className="btn btn-ghost flex-1">
+                <ChevronLeft size={15} /> Back
+              </button>
+            )}
+            {step < STEPS.length - 1 ? (
+              <button type="button" onClick={() => setStep((s) => s + 1)} className="btn btn-primary flex-1">
+                Next <ChevronRight size={15} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={lockMonth.isPending}
+                onClick={() => lockMonth.mutate({ profile, expenses, notes }, { onSuccess: () => setWizardOpen(false) })}
+                className="btn btn-primary flex-1"
+              >
+                <Lock size={14} strokeWidth={2} /> Lock month
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -114,109 +231,6 @@ export function MonthlyCloseCard() {
             )}
           </div>
         </div>
-      )}
-
-      {wizardOpen && (
-        <Modal title={`Monthly close · ${STEPS[step]}`} onClose={() => setWizardOpen(false)}>
-          <div className="space-y-5">
-            {step === 0 && (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Does this month's income look right?</p>
-                <div className="card-purple space-y-2 p-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Gross income</span>
-                    <span className="tnum font-semibold">{formatCurrency(profile.gross_income)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Net income</span>
-                    <span className="tnum font-semibold">{formatCurrency(profile.net_income)}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-text-muted">Update this in Settings first if it's changed.</p>
-              </div>
-            )}
-
-            {step === 1 && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Confirm your fixed expenses for the month.</p>
-                {fixed.length === 0 && <p className="text-xs text-text-muted">No fixed expenses tracked.</p>}
-                {fixed.map((e) => (
-                  <div key={e.id} className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
-                    <span>{e.name}</span>
-                    <span className="tnum">{formatCurrency(monthlyEquivalent(e))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Review your variable expenses.</p>
-                {variable.length === 0 && <p className="text-xs text-text-muted">No variable expenses tracked.</p>}
-                {variable.map((e) => (
-                  <div key={e.id} className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
-                    <span>{e.name}</span>
-                    <span className="tnum">{formatCurrency(monthlyEquivalent(e))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-2">
-                <label className="field-label" htmlFor="close-notes">
-                  Anything worth remembering about this month?
-                </label>
-                <textarea
-                  id="close-notes"
-                  rows={4}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional notes — one-off costs, changes to income, etc."
-                />
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Locking freezes this month's numbers in your history — they won't change even if you edit expenses
-                  later.
-                </p>
-                <div className="card-purple space-y-2 p-4 text-sm">
-                  <div className="flex justify-between">
-                    <span>Disposable income</span>
-                    <span className="tnum font-semibold">
-                      {formatCurrency(profile.net_income - fixed.reduce((s, e) => s + monthlyEquivalent(e), 0) - variable.reduce((s, e) => s + monthlyEquivalent(e), 0))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-1">
-              {step > 0 && (
-                <button type="button" onClick={() => setStep((s) => s - 1)} className="btn btn-ghost flex-1">
-                  <ChevronLeft size={15} /> Back
-                </button>
-              )}
-              {step < STEPS.length - 1 ? (
-                <button type="button" onClick={() => setStep((s) => s + 1)} className="btn btn-primary flex-1">
-                  Next <ChevronRight size={15} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={lockMonth.isPending}
-                  onClick={() => lockMonth.mutate({ profile, expenses, notes }, { onSuccess: () => setWizardOpen(false) })}
-                  className="btn btn-primary flex-1"
-                >
-                  <Lock size={14} strokeWidth={2} /> Lock month
-                </button>
-              )}
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   )

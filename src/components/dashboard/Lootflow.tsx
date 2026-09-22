@@ -25,7 +25,7 @@ export function Lootflow({ netIncome, totalExpenses, deltaVsLastMonth, health }:
 
   return (
     <div className="card space-y-4">
-      <div className="overline">Lootflow</div>
+      <div className="overline-label">Lootflow</div>
       <div className="flex items-center gap-5">
         <div className="relative h-28 w-28 shrink-0">
           <ResponsiveContainer width="100%" height="100%">

@@ -57,11 +57,11 @@ export function DebtStrategyComparison({
     <div className="space-y-4">
       <div className="card flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="overline">Total debt</p>
+          <p className="overline-label">Total debt</p>
           <p className="tnum text-lg">{formatCurrency(totalDebtBalance(debts))}</p>
         </div>
         <div>
-          <p className="overline">Min. payments</p>
+          <p className="overline-label">Min. payments</p>
           <p className="tnum text-lg">{formatCurrency(totalMinPayments(debts))}/mo</p>
         </div>
         <div className="min-w-[160px]">
@@ -121,11 +121,11 @@ export function DebtStrategyComparison({
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg bg-surface-2 px-3 py-2">
-                    <p className="overline">Debt-free in</p>
+                    <p className="overline-label">Debt-free in</p>
                     <p className="tnum text-sm">{monthLabel(result.totalMonths)}</p>
                   </div>
                   <div className="rounded-lg bg-surface-2 px-3 py-2">
-                    <p className="overline">Total interest</p>
+                    <p className="overline-label">Total interest</p>
                     <p className="tnum text-sm">{formatCurrency(result.totalInterest)}</p>
                   </div>
                 </div>
@@ -164,7 +164,7 @@ export function DebtStrategyComparison({
       </div>
 
       <div className="card">
-        <p className="overline mb-3">
+        <p className="overline-label mb-3">
           Payoff timeline — {chartStrategy === 'avalanche' ? 'Avalanche' : 'Snowball'}
         </p>
         {active.neverPaidOff ? (
