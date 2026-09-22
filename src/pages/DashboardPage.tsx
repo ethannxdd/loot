@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Sparkles, Users, Wallet } from 'lucide-react'
+import { AvailableLootHero } from '@/components/dashboard/AvailableLootHero'
 import { BriefingCard } from '@/components/dashboard/BriefingCard'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { Lootflow } from '@/components/dashboard/Lootflow'
@@ -116,33 +117,35 @@ export function DashboardPage() {
         </div>
       ) : (
         <>
+          <div className="space-y-4" data-tutorial="dashboard-stats">
+            <AvailableLootHero
+              value={disposable}
+              delta={disposableDelta}
+              sparkline={sparkline((s) => s.disposable_income)}
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatCard
+                variant="chip"
+                label="Loot going out"
+                value={totalExpenses}
+                delta={expensesDelta}
+                invertDeltaColor
+                sparkline={sparkline((s) => s.total_expenses)}
+                color="#AF72FE"
+              />
+              <StatCard
+                variant="chip"
+                label="Loot coming in"
+                value={netIncome}
+                delta={incomeDelta}
+                sparkline={sparkline((s) => s.net_income)}
+                color="#5BC0EB"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <div className="space-y-5 lg:col-span-2">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" data-tutorial="dashboard-stats">
-                <StatCard
-                  label="Available loot"
-                  value={disposable}
-                  delta={disposableDelta}
-                  sparkline={sparkline((s) => s.disposable_income)}
-                  color="#C1FE72"
-                />
-                <StatCard
-                  label="Loot going out"
-                  value={totalExpenses}
-                  delta={expensesDelta}
-                  invertDeltaColor
-                  sparkline={sparkline((s) => s.total_expenses)}
-                  color="#AF72FE"
-                />
-                <StatCard
-                  label="Loot coming in"
-                  value={netIncome}
-                  delta={incomeDelta}
-                  sparkline={sparkline((s) => s.net_income)}
-                  color="#5BC0EB"
-                />
-              </div>
-
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <WhereYourLootGoes expenses={expenses} />
                 <Lootflow

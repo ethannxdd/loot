@@ -5,9 +5,9 @@ import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay'
 import { TutorialProvider } from '@/context/TutorialContext'
 import { useProfile } from '@/hooks/useProfile'
 import { setActiveCurrency } from '@/lib/utils'
+import { CollapsibleRail } from './CollapsibleRail'
 import { MobileTabBar } from './MobileTabBar'
 import { MobileTopBar } from './MobileTopBar'
-import { Sidebar } from './Sidebar'
 import { GoalMaintenance } from './GoalMaintenance'
 import { SnapshotKeeper } from './SnapshotKeeper'
 
@@ -30,7 +30,7 @@ export function AppLayout() {
         <GoalMaintenance />
         <NotificationCenter />
         <TutorialAutoStart />
-        <Sidebar />
+        <CollapsibleRail />
         <div className="loot-gradient flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip">
           <MobileTopBar />
           <main className="flex-1 px-5 pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] md:px-8 md:py-8">
@@ -40,6 +40,7 @@ export function AppLayout() {
           </main>
           <MobileTabBar />
         </div>
+        <div className="grain-layer" aria-hidden="true" />
         <TutorialOverlay />
       </div>
     </TutorialProvider>
