@@ -8,11 +8,13 @@ import { SubscriptionAudit } from '@/components/statement/SubscriptionAudit'
 import { UnclassifiedPanel } from '@/components/statement/UnclassifiedPanel'
 import { UploadZone } from '@/components/statement/UploadZone'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Switch } from '@/components/ui/Switch'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useAddExpense, useExpenses } from '@/hooks/useExpenses'
 import { useSaveStatementAnalysis, useStatementAnalyses } from '@/hooks/useStatementAnalyses'
 import { useSubscriptionReviews, useUpsertSubscription } from '@/hooks/useSubscriptionReviews'
-import { categoryLabel, type ExpenseCategory } from '@/lib/categories'
+import { categoryColor, categoryLabel, type ExpenseCategory } from '@/lib/categories'
 import { monthLabel, monthlyEquivalent } from '@/lib/money'
 import {
   analyzeTransactions,
@@ -189,22 +191,23 @@ export function StatementPage() {
 
   return (
     <div className="animate-enter space-y-6">
-      <header>
-        <h1 className="text-[32px] font-bold tracking-[-0.025em]">Statement Analysis</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload a bank statement and Loot will break it down by category — entirely on your device.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Money"
+        title="Statements"
+        subtitle="Upload a bank statement and Loot will break it down by category — read entirely on your device."
+      />
 
-      <UploadZone bank={bank} onBankChange={setBank} onFile={(file) => void processFile(file)} isProcessing={isProcessing} error={error} />
+      <div data-tutorial="statement-upload"><UploadZone bank={bank} onBankChange={setBank} onFile={(file) => void processFile(file)} isProcessing={isProcessing} error={error} /></div>
 
       {passwordFile && (
-        <form onSubmit={submitPassword} className="card space-y-3 border-caution/30">
-          <div className="flex items-center gap-2 text-caution">
-            <KeyRound size={16} strokeWidth={1.75} />
-            <p className="text-sm font-bold">This statement is password protected</p>
+        <form onSubmit={submitPassword} className="card animate-enter space-y-3">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-caution/14 text-caution">
+              <KeyRound size={16} strokeWidth={2} />
+            </span>
+            <h2 className="card-title">This statement is password protected</h2>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             {passwordFile.wrong ? 'That password didn’t work — try again. ' : ''}
             Banks often lock statements with your ID number or a password you set. It’s used on this device to open
             the file and is never sent anywhere.
@@ -229,14 +232,14 @@ export function StatementPage() {
       )}
 
       {notice && (
-        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-xs text-primary">
-          <Info size={14} strokeWidth={1.75} /> {notice}
+        <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3.5 py-3 text-[13px] font-medium text-primary">
+          <Info size={15} strokeWidth={2} /> {notice}
         </div>
       )}
 
       {summary && loaded && (
         <div className="space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[13px] text-muted-foreground">
             <span>
               {loaded.fileName} · {summary.transactions.length} transactions
               {summary.from && summary.to && <> · {summary.from} to {summary.to}</>}
@@ -248,32 +251,27 @@ export function StatementPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-            <div className="card space-y-1">
-              <div className="flex items-center gap-1.5 text-primary">
-                <ArrowUpCircle size={14} strokeWidth={1.75} />
-                <p className="overline-label !text-primary">Total in</p>
+          <section className="card-elevated grid grid-cols-2 gap-y-5 sm:grid-cols-4 sm:p-6">
+            {[
+              { label: 'Money in', value: summary.totalIncome, color: 'var(--chart-1)', icon: ArrowDownCircle },
+              { label: 'Spent', value: summary.totalSpent, color: 'var(--chart-2)', icon: ArrowUpCircle },
+              { label: 'Net position', value: summary.netPosition, color: summary.netPosition < 0 ? 'var(--alert)' : 'var(--accent)', icon: null },
+              { label: 'Unclassified', value: summary.unclassifiedAmount, color: 'var(--caution)', icon: null },
+            ].map((s, i) => (
+              <div key={s.label} className={`px-1 sm:px-5 ${i > 0 ? 'sm:border-l sm:border-hairline' : 'sm:pl-0'}`}>
+                <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
+                  <span className="h-2 w-2 rounded-[3px]" style={{ background: s.color }} />
+                  {s.label}
+                </p>
+                <p
+                  className="tnum mt-1 text-[24px] font-bold tracking-[-0.03em]"
+                  style={s.label === 'Net position' ? { color: s.color } : undefined}
+                >
+                  {formatCurrency(s.value)}
+                </p>
               </div>
-              <p className="tnum text-lg">{formatCurrency(summary.totalIncome)}</p>
-            </div>
-            <div className="card space-y-1">
-              <div className="flex items-center gap-1.5 text-secondary">
-                <ArrowDownCircle size={14} strokeWidth={1.75} />
-                <p className="overline-label !text-secondary">Total spent</p>
-              </div>
-              <p className="tnum text-lg">{formatCurrency(summary.totalSpent)}</p>
-            </div>
-            <div className="card space-y-1">
-              <p className="overline-label">Net position</p>
-              <p className={`tnum text-lg ${summary.netPosition < 0 ? 'text-alert' : 'text-primary'}`}>
-                {formatCurrency(summary.netPosition)}
-              </p>
-            </div>
-            <div className="card space-y-1">
-              <p className="overline-label">Unclassified</p>
-              <p className="tnum text-lg">{formatCurrency(summary.unclassifiedAmount)}</p>
-            </div>
-          </div>
+            ))}
+          </section>
 
           <UnclassifiedPanel transactions={summary.unclassified} onAssign={assignMerchant} />
 
@@ -282,28 +280,32 @@ export function StatementPage() {
             <div className="space-y-5">
               <DistributionChart categoryTotals={summary.categoryTotals} />
 
-              <div className="card-purple space-y-2 px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={16} strokeWidth={1.75} className="text-secondary" />
-                  <p className="text-sm font-bold">Recommendations</p>
+              <div className="card-purple space-y-3 p-5">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+                    <Sparkles size={16} strokeWidth={2} />
+                  </span>
+                  <h3 className="card-title">What Loot noticed</h3>
                 </div>
-                <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <ul className="space-y-2">
                   {recommendations.map((r, i) => (
-                    <li key={i} className="flex gap-2">
-                      <span className="text-secondary">·</span> {r}
+                    <li key={i} className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13.5px] leading-relaxed">
+                      {r}
                     </li>
                   ))}
                 </ul>
               </div>
 
               {anomalies.length > 0 && (
-                <div className="card space-y-2 border-caution/30">
-                  <div className="flex items-center gap-2 text-caution">
-                    <AlertTriangle size={16} strokeWidth={1.75} />
-                    <p className="text-sm font-bold">Anomaly alerts</p>
+                <div className="card space-y-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-caution/14 text-caution">
+                      <AlertTriangle size={16} strokeWidth={2} />
+                    </span>
+                    <h3 className="card-title">Higher than usual</h3>
                   </div>
                   {anomalies.map((a) => (
-                    <p key={a.category} className="text-xs text-muted-foreground">
+                    <p key={a.category} className="text-[13.5px] text-muted-foreground">
                       <span className="font-semibold text-foreground">{categoryLabel(a.category)}</span> is{' '}
                       {a.pctAbove.toFixed(0)}% above your recent average ({formatCurrency(a.actual)} vs{' '}
                       {formatCurrency(a.average)}).
@@ -322,42 +324,51 @@ export function StatementPage() {
                 aria-expanded={syncOpen}
                 className="flex w-full items-center justify-between text-left"
               >
-                <span className="flex items-center gap-2 text-sm font-bold">
-                  <RefreshCw size={15} strokeWidth={1.75} /> Sync with my Loot expenses
+                <span className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-fill">
+                    <RefreshCw size={15} strokeWidth={2} />
+                  </span>
+                  <span>
+                    <span className="block text-[15px] font-semibold">Add to my Loot expenses</span>
+                    <span className="block text-[12.5px] text-muted-foreground">Turn statement categories into monthly expenses</span>
+                  </span>
                 </span>
-                <span className="text-xs text-primary">{syncOpen ? 'Hide' : 'Show'}</span>
+                <span className="text-[13px] font-semibold text-primary">{syncOpen ? 'Hide' : 'Show'}</span>
               </button>
               {syncOpen && (
                 <div className="space-y-3 border-t border-hairline pt-3">
-                  <p className="text-xs text-muted-foreground">
-                    Tick the categories to add to Loot as monthly variable expenses
+                  <p className="text-[13px] text-muted-foreground">
+                    Turn on the categories to add to Loot as monthly variable expenses
                     {summary.periodMonths > 1 && ` (this statement covers about ${summary.periodMonths} months, so amounts are averaged per month)`}.
                   </p>
+                  <div className="divide-y divide-hairline rounded-xl bg-surface-2 px-4">
                   {Object.entries(summary.categoryTotals).map(([category]) => {
                     const tracked = trackedInCategory(category)
                     return (
-                      <label key={category} className="block rounded-lg bg-surface-2 px-3 py-2 text-sm">
-                        <span className="flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={syncSelection[category] ?? false}
-                              onChange={(e) => setSyncSelection((prev) => ({ ...prev, [category]: e.target.checked }))}
-                              className="h-4 w-4 accent-primary"
-                              style={{ width: 'auto' }}
-                            />
-                            {categoryLabel(category)}
+                      <div key={category} className="py-2.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex min-w-0 items-center gap-2.5 text-[15px]">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: categoryColor(category) }} />
+                            <span className="truncate">{categoryLabel(category)}</span>
                           </span>
-                          <span className="tnum">{formatCurrency(monthlyFor(category))}/mo</span>
-                        </span>
+                          <span className="flex shrink-0 items-center gap-3">
+                            <span className="tnum text-[14px] font-semibold">{formatCurrency(monthlyFor(category))}/mo</span>
+                            <Switch
+                              checked={syncSelection[category] ?? false}
+                              onChange={(on) => setSyncSelection((prev) => ({ ...prev, [category]: on }))}
+                              label={`Add ${categoryLabel(category)}`}
+                            />
+                          </span>
+                        </div>
                         {tracked > 0 && (
-                          <span className="mt-1 block pl-6 text-xs text-caution">
+                          <span className="mt-1 block pl-5 text-[12.5px] text-caution">
                             You already track {formatCurrency(tracked)}/mo in this category — adding it would count twice.
                           </span>
                         )}
-                      </label>
+                      </div>
                     )
                   })}
+                  </div>
                   <button
                     type="button"
                     onClick={() => setConfirmSync(true)}
@@ -376,7 +387,7 @@ export function StatementPage() {
               type="button"
               onClick={() => void handleSaveAnalysis()}
               disabled={isSaving || savedThisRun}
-              className="btn btn-secondary"
+              className="btn btn-primary"
             >
               {isSaving && <Loader2 size={16} className="animate-spin" />}
               {savedThisRun ? 'Saved to history' : 'Save this analysis'}

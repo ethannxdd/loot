@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Segmented } from '@/components/ui/Segmented'
 import { Select } from '@/components/ui/Select'
 import {
   NET_WORTH_ASSET_CATEGORIES,
@@ -31,28 +32,19 @@ export function NetWorthItemForm({ initial, isSubmitting, onSubmit, onCancel }: 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3.5">
-      <div className="flex items-center gap-2 rounded-[10px] border border-border bg-input p-1">
-        <button
-          type="button"
-          onClick={() => {
-            setKind('asset')
-            setCategory(NET_WORTH_ASSET_CATEGORIES[0])
-          }}
-          className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${kind === 'asset' ? 'bg-surface-3 text-foreground' : 'text-text-muted'}`}
-        >
-          Asset
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setKind('liability')
-            setCategory(NET_WORTH_LIABILITY_CATEGORIES[0])
-          }}
-          className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${kind === 'liability' ? 'bg-surface-3 text-foreground' : 'text-text-muted'}`}
-        >
-          Liability
-        </button>
-      </div>
+      <Segmented
+        full
+        label="Type"
+        value={kind}
+        onChange={(k) => {
+          setKind(k)
+          setCategory(k === 'asset' ? NET_WORTH_ASSET_CATEGORIES[0] : NET_WORTH_LIABILITY_CATEGORIES[0])
+        }}
+        options={[
+          { value: 'asset', label: 'Something I own' },
+          { value: 'liability', label: 'Something I owe' },
+        ]}
+      />
 
       <div>
         <label className="field-label" htmlFor="nw-label">

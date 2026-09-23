@@ -80,21 +80,24 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
   }
 
   return (
-    <div className="card space-y-4">
-      <h3 className="text-base font-bold">Deduction tracker — {yearData.tax_year}</h3>
+    <div className="card space-y-5 sm:p-6">
+      <div>
+        <h3 className="card-title">Deductions</h3>
+        <p className="text-[13px] text-muted-foreground">What you can claim for the {yearData.tax_year} tax year.</p>
+      </div>
 
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <label className="field-label" htmlFor="ded-ra">
             Retirement annuity contributions (annual)
           </label>
-          <span className="text-xs text-text-muted">{raCapPct.toFixed(0)}% of cap</span>
+          <span className="text-[12.5px] text-muted-foreground">{raCapPct.toFixed(0)}% of cap</span>
         </div>
         <input id="ded-ra" type="number" min={0} step="any" value={ra} onChange={(e) => setRa(e.target.value)} />
-        <div className="mt-1.5 h-1.5 rounded-full bg-white/10">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-fill">
           <div className="h-full rounded-full bg-primary" style={{ width: `${raCapPct}%` }} />
         </div>
-        <p className="mt-1 text-xs text-text-subtle">Cap: {formatCurrency(table.raDeductionCap)} or 27.5% of income, whichever is lower.</p>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">Cap: {formatCurrency(table.raDeductionCap)} or 27.5% of income, whichever is lower.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -103,14 +106,14 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
             Medical aid contributions
           </label>
           <input id="ded-medical" type="number" min={0} step="any" value={medical} onChange={(e) => setMedical(e.target.value)} />
-          <p className="mt-1 text-xs text-text-subtle">For your records — the tax credit is worked out from your dependants.</p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">For your records — the tax credit is worked out from your dependants.</p>
         </div>
         <div>
           <label className="field-label" htmlFor="ded-donations">
             Donations to PBOs
           </label>
           <input id="ded-donations" type="number" min={0} step="any" value={donations} onChange={(e) => setDonations(e.target.value)} />
-          <p className="mt-1 text-xs text-text-subtle">Section 18A receipts only; capped at 10% of taxable income.</p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">Section 18A receipts only; capped at 10% of taxable income.</p>
         </div>
         <div>
           <label className="field-label" htmlFor="ded-home">
@@ -125,7 +128,7 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
             disabled={profile.home_office_enabled !== 'yes'}
             onChange={(e) => setHomeOffice(e.target.value)}
           />
-          <p className="mt-1 text-xs text-text-subtle">
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
             {profile.home_office_enabled !== 'yes'
               ? 'Turn on “home office” in your tax profile to use this.'
               : homeOfficePct !== null
@@ -147,7 +150,7 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
             onChange={(e) => setTravel(e.target.value)}
           />
           {!profile.has_travel_allowance && (
-            <p className="mt-1 text-xs text-text-subtle">Only for people with a travel allowance — see your tax profile.</p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">Only for people with a travel allowance — see your tax profile.</p>
           )}
         </div>
         <div className="col-span-2">
@@ -162,7 +165,7 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
             value={profDev}
             onChange={(e) => setProfDev(e.target.value)}
           />
-          <p className="mt-1 text-xs text-text-subtle">
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
             {canClaimProfDev
               ? 'Counted against your self-employed income.'
               : 'Salaried employees generally can’t deduct these — kept here for your records only.'}
@@ -171,7 +174,7 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
             <button
               type="button"
               onClick={() => setProfDev(String(Math.round(workRelatedAnnual)))}
-              className="mt-1.5 text-xs font-semibold text-primary"
+              className="mt-2 text-[13px] font-semibold text-primary"
             >
               Your work-related expenses come to about {formatCurrency(workRelatedAnnual)} a year — use this
             </button>
@@ -179,9 +182,9 @@ export function DeductionTracker({ yearData, profile, grossAnnualIncome, workRel
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-3">
-        <span className="text-sm font-semibold">Estimated tax saving from deductions</span>
-        <span className="tnum text-base font-bold text-primary">{formatCurrency(estimatedSaving)}</span>
+      <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary/10 px-4 py-3.5">
+        <span className="text-[14px] font-semibold">Tax saved by your deductions</span>
+        <span className="tnum shrink-0 text-[20px] font-bold tracking-[-0.02em] text-primary">{formatCurrency(estimatedSaving)}</span>
       </div>
 
       <button type="button" onClick={handleSave} disabled={isSaving || !dirty} className="btn btn-primary w-full">

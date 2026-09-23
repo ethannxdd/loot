@@ -1,46 +1,46 @@
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
-import { scoreColor } from '@/lib/budge-score'
-
-const COLOR_HEX: Record<'green' | 'amber' | 'red', string> = {
-  green: '#C1FE72',
-  amber: '#F0C040',
-  red: '#FF5C5C',
-}
+const TONE = {
+  green: 'var(--accent)',
+  amber: 'var(--caution)',
+  red: 'var(--alert)',
+} as const
 
 interface ScoreRingProps {
   score: number
+  /** Top of the scale the score is on (999 TransUnion, 740 Experian/ClearScore, 100 habits rating…). */
+  max?: number
+  tone?: keyof typeof TONE
   size?: number
+  /** Small line under the number; defaults to "of {max}". */
+  caption?: string
 }
 
-export function ScoreRing({ score, size = 112 }: ScoreRingProps) {
-  const color = scoreColor(score)
-  const data = [
-    { name: 'score', value: score },
-    { name: 'rest', value: Math.max(0, 999 - score) },
-  ]
-
+/** Activity-style ring: a round-capped arc on a faint track, score in the middle. */
+export function ScoreRing({ score, max = 999, tone = 'green', size = 112, caption }: ScoreRingProps) {
+  const stroke = Math.max(8, size * 0.1)
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  const pct = Math.min(1, Math.max(0, score / max))
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            innerRadius={size * 0.36}
-            outerRadius={size * 0.5}
-            paddingAngle={2}
-            stroke="none"
-            startAngle={90}
-            endAngle={-270}
-          >
-            <Cell fill={COLOR_HEX[color]} />
-            <Cell fill="rgba(255,255,255,0.08)" />
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={`${Math.round(score)} out of ${max}`}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--fill-2)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={TONE[tone]}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${c * pct} ${c}`}
+          style={{ transition: 'stroke-dasharray 700ms cubic-bezier(0.16,1,0.3,1)' }}
+        />
+      </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="tnum text-xl font-bold">{Math.round(score)}</span>
-        <span className="text-[9px] text-text-muted">/ 999</span>
+        <span className="tnum font-bold tracking-[-0.03em]" style={{ fontSize: size * 0.26 }}>
+          {Math.round(score)}
+        </span>
+        <span className="text-[11px] font-medium text-muted-foreground">{caption ?? `of ${max}`}</span>
       </div>
     </div>
   )

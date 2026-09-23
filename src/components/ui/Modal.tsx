@@ -50,7 +50,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -59,20 +59,20 @@ export function Modal({ title, onClose, children }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="card-elevated animate-enter max-h-[90dvh] w-full max-w-md overflow-y-auto outline-none"
+        className="animate-enter max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-[22px] bg-surface p-6 shadow-[var(--shadow-pop)] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 id={titleId} className="text-lg font-bold">
+          <h2 id={titleId} className="text-[19px] font-bold tracking-[-0.02em]">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+            className="grid h-8 w-8 place-items-center rounded-full bg-fill text-muted-foreground hover:text-foreground"
           >
-            <X size={18} strokeWidth={1.75} />
+            <X size={16} strokeWidth={2} />
           </button>
         </div>
         {children}

@@ -24,7 +24,14 @@ function relativeTime(iso: string) {
  * `align` is which edge of the bell the panel hangs from: "right" (default) opens leftwards, for a bell at the
  * right of a bar (mobile); "left" opens rightwards, for a bell at the left of the screen (desktop sidebar).
  */
-export function NotificationBell({ align = 'right' }: { align?: 'left' | 'right' }) {
+export function NotificationBell({
+  align = 'right',
+  variant = 'plain',
+}: {
+  align?: 'left' | 'right'
+  /** "plain" = borderless icon (sidebar); "button" = raised round icon button (mobile top bar). */
+  variant?: 'plain' | 'button'
+}) {
   const { data: notifications = [] } = useNotifications()
   const markRead = useMarkNotificationRead()
   const markAllRead = useMarkAllNotificationsRead()
@@ -49,11 +56,8 @@ export function NotificationBell({ align = 'right' }: { align?: 'left' | 'right'
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [open])
 
-  // The dropdown used to be `position: absolute` inside the trigger's own relative wrapper, which
-  // worked until the nav rail (`.rail-shell`) gained `overflow: hidden` for its liquid-glass panel
-  // effect — that started clipping the popover to the rail's bounds. Portaling to <body> and
-  // positioning with `fixed` + a measured rect sidesteps any ancestor's overflow, on every page,
-  // the same way the custom Select dropdown already portals past its own containers.
+  // Portaled to <body> and positioned with `fixed` + a measured rect so no ancestor's `overflow: hidden`
+  // (the sidebar, a card) can ever clip it — the same way the custom Select dropdown portals.
   useLayoutEffect(() => {
     if (!open) {
       setPanelPos(null)
@@ -93,11 +97,20 @@ export function NotificationBell({ align = 'right' }: { align?: 'left' | 'right'
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+        aria-expanded={open}
+        className={
+          variant === 'button'
+            ? 'icon-btn'
+            : 'relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-fill-2 hover:text-foreground'
+        }
       >
-        <Bell size={18} strokeWidth={1.75} />
+        <Bell size={variant === 'button' ? 18 : 17} strokeWidth={1.8} />
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert px-1 text-[9px] font-bold text-white">
+          <span
+            className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff3b30] px-1 text-[9px] font-bold text-white ring-2 ring-[var(--surface)] ${
+              variant === 'button' ? '-right-0.5 -top-0.5' : '-right-1 -top-1'
+            }`}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -108,16 +121,16 @@ export function NotificationBell({ align = 'right' }: { align?: 'left' | 'right'
         createPortal(
           <div
             ref={panelRef}
-            className="fixed z-40 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface shadow-2xl"
+            className="animate-enter fixed z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-pop)]"
             style={{ top: panelPos.top, left: panelPos.left }}
           >
             <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
-              <p className="text-sm font-bold">Notifications</p>
+              <p className="text-[15px] font-semibold">Notifications</p>
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={() => markAllRead.mutate()}
-                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  className="flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline"
                 >
                   <Check size={12} strokeWidth={2} /> Mark all read
                 </button>
@@ -131,15 +144,15 @@ export function NotificationBell({ align = 'right' }: { align?: 'left' | 'right'
                   const content = (
                     <div
                       className={`flex flex-col gap-0.5 border-b border-hairline px-4 py-3 last:border-0 ${
-                        n.read_at ? '' : 'bg-primary/5'
-                      } hover:bg-white/[0.04]`}
+                        n.read_at ? '' : 'bg-primary/[0.06]'
+                      } hover:bg-fill`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-semibold">{n.title}</p>
+                        <p className="text-[13.5px] font-semibold">{n.title}</p>
                         {!n.read_at && <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">{n.body}</p>
-                      <p className="text-[10px] text-text-subtle">{relativeTime(n.created_at)}</p>
+                      <p className="text-[13px] text-muted-foreground">{n.body}</p>
+                      <p className="text-[11.5px] text-text-subtle">{relativeTime(n.created_at)}</p>
                     </div>
                   )
                   return n.link ? (

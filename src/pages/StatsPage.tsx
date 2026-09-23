@@ -4,11 +4,13 @@ import { BenchmarksTab } from '@/components/stats/BenchmarksTab'
 import { CategoryTrendsTab } from '@/components/stats/CategoryTrendsTab'
 import { NetWorthTab } from '@/components/stats/NetWorthTab'
 import { OverviewTab } from '@/components/stats/OverviewTab'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Segmented } from '@/components/ui/Segmented'
 import { useAffordabilityChecks } from '@/hooks/useAffordabilityChecks'
 import { useProfile } from '@/hooks/useProfile'
 import { useSnapshots } from '@/hooks/useSnapshots'
 
-const TABS = ['Overview', 'Category trends', 'Net worth', 'Benchmarks'] as const
+const TABS = ['Overview', 'Categories', 'Net worth', 'Benchmarks'] as const
 type Tab = (typeof TABS)[number]
 
 export function StatsPage() {
@@ -19,45 +21,23 @@ export function StatsPage() {
 
   return (
     <div className="animate-enter space-y-6">
-      <header>
-        <h1 className="text-[32px] font-bold tracking-[-0.025em]">Stats</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your history, trends, and how you compare.
-        </p>
-      </header>
+      <PageHeader eyebrow="Overview" title="Stats" subtitle="Your history, trends, and how you compare." />
 
-      <div className="-mx-1 overflow-x-auto px-1">
-        <div className="flex w-fit rounded-[10px] border border-border bg-input p-1">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-pressed={tab === t}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-2 sm:px-3.5 text-xs font-semibold transition-colors ${
-                tab === t ? 'bg-surface-3 text-foreground' : 'text-text-muted'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" data-tutorial="stats-tabs">
+        <Segmented label="Stats view" value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
       </div>
 
-      {snapshotsLoading && tab !== 'Net worth' && <div className="skeleton h-64 rounded-2xl" />}
+      {snapshotsLoading && tab !== 'Net worth' && <div className="skeleton h-64 rounded-[22px]" />}
       {!snapshotsLoading && tab === 'Overview' && <OverviewTab snapshots={snapshots} />}
-      {!snapshotsLoading && tab === 'Category trends' && <CategoryTrendsTab snapshots={snapshots} />}
+      {!snapshotsLoading && tab === 'Categories' && <CategoryTrendsTab snapshots={snapshots} />}
       {tab === 'Net worth' && <NetWorthTab snapshots={snapshots} />}
       {!snapshotsLoading && tab === 'Benchmarks' && (
-        <BenchmarksTab
-          latestSnapshot={snapshots[snapshots.length - 1]}
-          grossIncome={profile?.gross_income ?? 0}
-        />
+        <BenchmarksTab latestSnapshot={snapshots[snapshots.length - 1]} grossIncome={profile?.gross_income ?? 0} />
       )}
 
-      {checks.length > 0 && (
+      {tab === 'Overview' && checks.length > 0 && (
         <section className="space-y-2">
-          <div className="overline-label px-1">Affordability check history</div>
+          <h2 className="card-title px-1">Affordability checks</h2>
           <CheckHistoryList checks={checks} />
         </section>
       )}

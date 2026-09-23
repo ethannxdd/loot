@@ -5,6 +5,7 @@ import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/hooks/useAuth'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { CURRENCIES, CURRENCY_LABELS, PAY_FREQUENCIES, type CurrencyCode, type PayFrequency, type Profile } from '@/lib/types'
+import { SettingsHeading } from '@/components/settings/SettingsHeading'
 
 const FREQUENCY_LABELS: Record<PayFrequency, string> = {
   monthly: 'Monthly',
@@ -38,9 +39,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
-      <div className="overline-label flex items-center gap-1.5">
-        <User size={13} strokeWidth={2} /> Profile
-      </div>
+      <SettingsHeading icon={User} title="Profile" color="var(--label-3)" />
 
       <div>
         <label className="field-label" htmlFor="settings-name">
@@ -51,7 +50,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
 
       <div>
         <p className="field-label">Email</p>
-        <p className="rounded-[10px] border border-border bg-input px-3.5 py-2.5 text-sm text-text-muted">{user?.email}</p>
+        <p className="truncate rounded-xl bg-fill px-3.5 py-3 text-[15px] text-muted-foreground">{user?.email}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -79,7 +78,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
         </div>
       </div>
       {currency !== profile.currency_code && (
-        <p className="text-xs text-text-muted">
+        <p className="text-[13px] text-muted-foreground">
           Changing currency relabels your figures — it doesn’t convert them. Update your income and expenses if the amounts
           should change too.
         </p>

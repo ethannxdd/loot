@@ -2,10 +2,11 @@ import { Outlet } from '@tanstack/react-router'
 import { NotificationCenter } from '@/components/notifications/NotificationCenter'
 import { TutorialAutoStart } from '@/components/tutorial/TutorialAutoStart'
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay'
+import { LiquidGlassDefs } from '@/components/ui/Glass'
 import { TutorialProvider } from '@/context/TutorialContext'
 import { useProfile } from '@/hooks/useProfile'
 import { setActiveCurrency } from '@/lib/utils'
-import { CollapsibleRail } from './CollapsibleRail'
+import { Sidebar } from './Sidebar'
 import { MobileTabBar } from './MobileTabBar'
 import { MobileTopBar } from './MobileTopBar'
 import { GoalMaintenance } from './GoalMaintenance'
@@ -25,22 +26,23 @@ export function AppLayout() {
 
   return (
     <TutorialProvider>
-      <div className="flex min-h-dvh">
+      <div className="relative flex min-h-dvh">
+        <LiquidGlassDefs />
+        <div className="app-ambient" aria-hidden />
         <SnapshotKeeper />
         <GoalMaintenance />
         <NotificationCenter />
         <TutorialAutoStart />
-        <CollapsibleRail />
-        <div className="loot-gradient flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip">
+        <Sidebar />
+        <div className="relative z-[1] flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip">
           <MobileTopBar />
-          <main className="flex-1 px-5 pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] md:px-8 md:py-8">
-            <div key={profile?.currency_code} className="mx-auto w-full max-w-6xl">
+          <main className="flex-1 px-4 pt-3 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-10 md:pt-8 md:pb-12">
+            <div key={profile?.currency_code} className="mx-auto w-full max-w-[1180px]">
               <Outlet />
             </div>
           </main>
           <MobileTabBar />
         </div>
-        <div className="grain-layer" aria-hidden="true" />
         <TutorialOverlay />
       </div>
     </TutorialProvider>

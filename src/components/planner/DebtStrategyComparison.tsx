@@ -1,6 +1,8 @@
 import { AlertTriangle, Check } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Segmented } from '@/components/ui/Segmented'
+import { chartTooltipStyle } from '@/lib/chart'
 import { simulatePayoff, totalDebtBalance, totalMinPayments } from '@/lib/debt-math'
 import { parseDateOnly } from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
@@ -47,7 +49,7 @@ export function DebtStrategyComparison({
 
   if (debts.length === 0) {
     return (
-      <p className="card py-10 text-center text-sm text-text-muted">
+      <p className="card py-10 text-center text-[14px] text-muted-foreground">
         Add at least one debt above to compare payoff strategies.
       </p>
     )
@@ -55,16 +57,16 @@ export function DebtStrategyComparison({
 
   return (
     <div className="space-y-4">
-      <div className="card flex flex-wrap items-center justify-between gap-3">
+      <div className="card-elevated grid grid-cols-2 items-end gap-5 sm:grid-cols-3 sm:p-6">
         <div>
-          <p className="overline-label">Total debt</p>
-          <p className="tnum text-lg">{formatCurrency(totalDebtBalance(debts))}</p>
+          <p className="text-[13px] font-medium text-muted-foreground">Total debt</p>
+          <p className="tnum mt-1 text-[24px] font-bold tracking-[-0.03em]">{formatCurrency(totalDebtBalance(debts))}</p>
         </div>
-        <div>
-          <p className="overline-label">Min. payments</p>
-          <p className="tnum text-lg">{formatCurrency(totalMinPayments(debts))}/mo</p>
+        <div className="sm:border-l sm:border-hairline sm:pl-5">
+          <p className="text-[13px] font-medium text-muted-foreground">Minimum payments</p>
+          <p className="tnum mt-1 text-[24px] font-bold tracking-[-0.03em]">{formatCurrency(totalMinPayments(debts))}<span className="text-[14px] text-muted-foreground">/mo</span></p>
         </div>
-        <div className="min-w-[160px]">
+        <div className="col-span-2 sm:col-span-1 sm:border-l sm:border-hairline sm:pl-5">
           <label className="field-label" htmlFor="extra-payment">
             Extra payment / month
           </label>
@@ -96,22 +98,24 @@ export function DebtStrategyComparison({
           return (
             <div
               key={key}
-              className={`card space-y-3 ${isChosen ? 'border-primary/50' : ''}`}
+              className={`card cursor-pointer space-y-4 sm:p-6 ${isChosen ? '!shadow-[0_0_0_2px_var(--accent)]' : ''} ${
+                chartStrategy === key && !isChosen ? '!shadow-[0_0_0_1.5px_var(--border)]' : ''
+              }`}
               onClick={() => setChartStrategy(key)}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-bold">{title}</h3>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
+                  <h3 className="text-[18px] font-bold tracking-[-0.015em]">{title}</h3>
+                  <p className="text-[13px] text-muted-foreground">{desc}</p>
                 </div>
                 {isChosen && (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                    <Check size={14} strokeWidth={2.5} />
+                  <span className="chip chip-positive shrink-0">
+                    <Check size={13} strokeWidth={2.6} /> Your plan
                   </span>
                 )}
               </div>
               {result.neverPaidOff ? (
-                <div className="flex items-start gap-2 rounded-lg border border-alert/30 bg-alert/10 px-3 py-2.5 text-xs text-alert">
+                <div className="flex items-start gap-2 rounded-xl bg-alert/10 px-3.5 py-3 text-[13px] font-medium text-alert">
                   <AlertTriangle size={14} strokeWidth={1.75} className="mt-0.5 shrink-0" />
                   <p>
                     At these payments {result.order.filter((id) => !result.perDebt[id].paidOff).map(nameOf).join(', ')}{' '}
@@ -119,18 +123,18 @@ export function DebtStrategyComparison({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-surface-2 px-3 py-2">
-                    <p className="overline-label">Debt-free in</p>
-                    <p className="tnum text-sm">{monthLabel(result.totalMonths)}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-surface-2 p-3.5">
+                    <p className="text-[12.5px] text-muted-foreground">Debt-free in</p>
+                    <p className="tnum text-[20px] font-bold tracking-[-0.02em]">{monthLabel(result.totalMonths)}</p>
                   </div>
-                  <div className="rounded-lg bg-surface-2 px-3 py-2">
-                    <p className="overline-label">Total interest</p>
-                    <p className="tnum text-sm">{formatCurrency(result.totalInterest)}</p>
+                  <div className="rounded-2xl bg-surface-2 p-3.5">
+                    <p className="text-[12.5px] text-muted-foreground">Total interest</p>
+                    <p className="tnum text-[20px] font-bold tracking-[-0.02em]">{formatCurrency(result.totalInterest)}</p>
                   </div>
                 </div>
               )}
-              <ol className="space-y-1 text-xs text-muted-foreground">
+              <ol className="space-y-1.5 text-[13px] text-muted-foreground">
                 {result.order.map((id, i) => {
                   const entry = result.perDebt[id]
                   return (
@@ -154,7 +158,7 @@ export function DebtStrategyComparison({
                   onChooseStrategy(key)
                 }}
                 disabled={isSaving}
-                className={isChosen ? 'btn btn-secondary w-full' : 'btn btn-ghost w-full'}
+                className={isChosen ? 'btn btn-accent w-full' : 'btn btn-ghost w-full'}
               >
                 {isChosen ? 'Chosen strategy' : 'Choose this strategy'}
               </button>
@@ -163,41 +167,51 @@ export function DebtStrategyComparison({
         })}
       </div>
 
-      <div className="card">
-        <p className="overline-label mb-3">
-          Payoff timeline — {chartStrategy === 'avalanche' ? 'Avalanche' : 'Snowball'}
-        </p>
+      <div className="card sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="card-title">Balance over time</h3>
+          <Segmented
+            label="Strategy shown"
+            value={chartStrategy}
+            onChange={setChartStrategy}
+            options={[
+              { value: 'avalanche', label: 'Avalanche' },
+              { value: 'snowball', label: 'Snowball' },
+            ]}
+          />
+        </div>
         {active.neverPaidOff ? (
-          <p className="py-10 text-center text-xs text-text-muted">
+          <p className="py-10 text-center text-[13px] text-muted-foreground">
             The balance never reaches zero at these payments, so there's no timeline to draw.
           </p>
         ) : (
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+            <AreaChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+              <defs>
+                <linearGradient id="debtFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--chart-5)" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="var(--chart-5)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline)" vertical={false} />
               <XAxis
                 dataKey="month"
                 tickFormatter={(m) => monthLabel(m)}
-                tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }}
+                tick={{ fontSize: 11, fill: 'var(--label-2)' }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
                 minTickGap={28}
               />
-              <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} axisLine={false} tickLine={false} width={0} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--label-2)' }} axisLine={false} tickLine={false} width={0} />
               <Tooltip
                 formatter={(value) => formatCurrency(Number(value) || 0)}
                 labelFormatter={(m) => `Month ${m}`}
-                contentStyle={{
-                  background: '#211B1B',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
+                contentStyle={chartTooltipStyle}
               />
-              <Line type="monotone" dataKey="balance" stroke="#AF72FE" strokeWidth={2} dot={false} />
-            </LineChart>
+              <Area type="monotone" dataKey="balance" name="Balance" stroke="var(--chart-5)" strokeWidth={2.5} fill="url(#debtFill)" dot={false} />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
         )}

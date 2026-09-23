@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useTutorialContext } from '@/context/TutorialContext'
@@ -24,6 +25,10 @@ export function TutorialOverlay() {
   const { active, stepIndex, totalSteps, next, back, close } = useTutorialContext()
   const updateProfile = useUpdateProfile()
   const [rect, setRect] = useState<DOMRect | null>(null)
+  // True while the step's page is loading / its target is being looked for — the card waits instead of flashing.
+  const [searching, setSearching] = useState(false)
+  const navigate = useNavigate()
+  const pathname = useRouterState({ select: (st) => st.location.pathname })
 
   const step = TUTORIAL_STEPS[stepIndex]
   const isLast = stepIndex === totalSteps - 1
@@ -49,31 +54,53 @@ export function TutorialOverlay() {
     }
   }, [active])
 
+  // Open the step's page first.
   useEffect(() => {
-    if (!active || !step?.selector) {
-      setRect(null)
+    if (!active || !step) return
+    if (pathname !== step.route) void navigate({ to: step.route })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, stepIndex])
+
+  useEffect(() => {
+    if (!active || !step) return
+    setRect(null)
+    if (pathname !== step.route) {
+      setSearching(true)
       return
     }
-    setRect(null)
+    if (step.selectors.length === 0) {
+      window.scrollTo({ top: 0 })
+      setSearching(false)
+      return
+    }
+    setSearching(true)
     let raf = 0
     let attempts = 0
+    let found: HTMLElement | null = null
+
+    const locate = () => step.selectors.map(findVisible).find(Boolean) ?? null
 
     function tryMeasure() {
-      const el = findVisible(step!.selector!)
+      // Give the page ~0.8s to load its data before settling for a fallback target (e.g. the page header).
+      const primary = findVisible(step!.selectors[0])
+      const el = primary ?? (attempts > 48 ? locate() : null)
       if (el) {
-        // Bring the target into view first (on phones it can be well below the fold).
+        found = el
         el.scrollIntoView?.({ block: 'center', behavior: 'instant' as ScrollBehavior })
-        setRect(el.getBoundingClientRect())
+        requestAnimationFrame(() => {
+          setRect(el.getBoundingClientRect())
+          setSearching(false)
+        })
         return
       }
       attempts += 1
-      if (attempts < 40) raf = requestAnimationFrame(tryMeasure)
+      if (attempts < 150) raf = requestAnimationFrame(tryMeasure)
+      else setSearching(false) // nothing on screen — centred card
     }
     tryMeasure()
 
     function onViewportChange() {
-      const el = findVisible(step!.selector!)
-      if (el) setRect(el.getBoundingClientRect())
+      if (found?.isConnected) setRect(found.getBoundingClientRect())
     }
     window.addEventListener('resize', onViewportChange)
     window.addEventListener('scroll', onViewportChange, true)
@@ -83,7 +110,7 @@ export function TutorialOverlay() {
       window.removeEventListener('resize', onViewportChange)
       window.removeEventListener('scroll', onViewportChange, true)
     }
-  }, [active, step, stepIndex])
+  }, [active, step, stepIndex, pathname])
 
   if (!active || !step) return null
 
@@ -105,7 +132,7 @@ export function TutorialOverlay() {
     persistCompletion()
   }
 
-  const hasSpotlight = Boolean(step.selector && rect)
+  const hasSpotlight = Boolean(step.selectors.length > 0 && rect)
 
   // A target taller than the screen (or partly scrolled off it) is spotlighted only where it's actually visible,
   // so the hole and the tooltip always sit on screen.
@@ -127,9 +154,9 @@ export function TutorialOverlay() {
         left: visible.left - SPOTLIGHT_PADDING,
         width: visible.right - visible.left + SPOTLIGHT_PADDING * 2,
         height: visible.bottom - visible.top + SPOTLIGHT_PADDING * 2,
-        borderRadius: 14,
-        border: '2px solid #C1FE72',
-        boxShadow: '0 0 0 9999px rgba(15,10,10,0.86)',
+        borderRadius: 18,
+        border: '2px solid var(--accent)',
+        boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)',
         transition: 'all 320ms cubic-bezier(0.16,1,0.3,1)',
         pointerEvents: 'none',
       }
@@ -139,7 +166,7 @@ export function TutorialOverlay() {
         left: '50%',
         width: 1,
         height: 1,
-        boxShadow: '0 0 0 9999px rgba(15,10,10,0.86)',
+        boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)',
         pointerEvents: 'none',
       }
 
@@ -180,22 +207,23 @@ export function TutorialOverlay() {
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true">
       <div style={spotlightStyle} />
 
+      {!searching && (
       <div className={hasSpotlight ? undefined : 'pointer-events-none fixed inset-0 flex items-center justify-center'}>
-      <div style={tooltipStyle} className="card-elevated animate-enter pointer-events-auto space-y-3 bg-surface p-5">
+      <div key={step.id} style={tooltipStyle} className="card-elevated animate-enter pointer-events-auto space-y-3 bg-surface p-5">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-[15px] font-bold leading-snug">{step.title}</p>
+          <p className="text-[17px] font-bold leading-snug tracking-[-0.01em]">{step.title}</p>
           <button
             type="button"
             onClick={handleSkip}
             aria-label="Skip tour"
-            className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-white/[0.08] hover:text-foreground"
+            className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-fill hover:text-foreground"
           >
             <X size={15} strokeWidth={2} />
           </button>
         </div>
-        <p className="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+        <p className="text-[14.5px] leading-relaxed text-muted-foreground">{step.body}</p>
         <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] font-semibold text-text-subtle">
+          <span className="tnum text-[12.5px] font-semibold text-text-subtle">
             {stepIndex + 1} of {totalSteps}
           </span>
           <div className="flex items-center gap-2">
@@ -204,7 +232,7 @@ export function TutorialOverlay() {
                 type="button"
                 onClick={back}
                 aria-label="Previous step"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+                className="grid h-9 w-9 place-items-center rounded-full bg-fill text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft size={14} strokeWidth={2} />
               </button>
@@ -212,7 +240,7 @@ export function TutorialOverlay() {
             <button
               type="button"
               onClick={handleNext}
-              className="btn btn-primary !min-h-0 !py-2 !px-4 text-xs"
+              className="btn btn-primary !min-h-9 !px-4 !text-[14px]"
             >
               {isLast ? 'Done' : 'Next'}
               {!isLast && <ArrowRight size={14} strokeWidth={2} />}
@@ -221,6 +249,7 @@ export function TutorialOverlay() {
         </div>
       </div>
       </div>
+      )}
     </div>
   )
 }

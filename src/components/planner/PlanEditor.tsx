@@ -88,7 +88,7 @@ export function PlanEditor({ initial, isSubmitting, onSubmit, onCancel }: PlanEd
           type="button"
           disabled={firstIncome <= 0}
           onClick={() => setTaxRatePct(String(estimateEffectiveTaxRatePct(firstIncome)))}
-          className="mt-1.5 text-xs font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-2 text-[13px] font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           Estimate from SARS tables using the first phase’s income
         </button>
@@ -107,7 +107,7 @@ export function PlanEditor({ initial, isSubmitting, onSubmit, onCancel }: PlanEd
         <button
           type="button"
           onClick={addPhase}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary"
+          className="btn btn-ghost w-full"
         >
           <Plus size={14} strokeWidth={2} /> Add phase
         </button>
@@ -127,7 +127,7 @@ export function PlanEditor({ initial, isSubmitting, onSubmit, onCancel }: PlanEd
       </div>
 
       {error && (
-        <p role="alert" className="text-xs text-alert">
+        <p role="alert" className="text-[13px] font-medium text-alert">
           {error}
         </p>
       )}

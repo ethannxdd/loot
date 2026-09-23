@@ -1,10 +1,10 @@
 import {
-  BarChart3,
+  ChartColumn,
   Calculator,
   FileSearch,
   GitCompare,
   Landmark,
-  LayoutDashboard,
+  LayoutGrid,
   Settings,
   Sparkles,
   Target,
@@ -27,8 +27,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/stats', label: 'Stats', icon: BarChart3 },
+      { to: '/dashboard', label: 'Summary', icon: LayoutGrid },
+      { to: '/stats', label: 'Stats', icon: ChartColumn },
     ],
   },
   {
@@ -36,16 +36,16 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/expenses', label: 'Expenses', icon: Wallet },
       { to: '/goals', label: 'Goals', icon: Target },
-      { to: '/checker', label: 'Checker', icon: Sparkles },
-      { to: '/statement', label: 'Statement Analysis', icon: FileSearch },
+      { to: '/checker', label: 'Can I afford it?', icon: Sparkles },
+      { to: '/statement', label: 'Statements', icon: FileSearch },
     ],
   },
   {
     label: 'Planning',
     items: [
-      { to: '/planner', label: 'Planner', icon: Calculator },
-      { to: '/compare', label: 'Compare Plans', icon: GitCompare },
-      { to: '/tax', label: 'Tax Centre', icon: Landmark },
+      { to: '/planner', label: 'Salary planner', icon: Calculator },
+      { to: '/compare', label: 'Compare plans', icon: GitCompare },
+      { to: '/tax', label: 'Tax centre', icon: Landmark },
     ],
   },
   {
@@ -56,11 +56,11 @@ export const NAV_GROUPS: NavGroup[] = [
 
 /** The 5 mobile bottom tabs — a curated subset of the full nav. */
 export const MOBILE_TABS: NavItem[] = [
-  { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Summary', icon: LayoutGrid },
   { to: '/expenses', label: 'Expenses', icon: Wallet },
   { to: '/statement', label: 'Statement', icon: FileSearch },
   { to: '/goals', label: 'Goals', icon: Target },
-  { to: '/stats', label: 'Stats', icon: BarChart3 },
+  { to: '/stats', label: 'Stats', icon: ChartColumn },
 ]
 
 /** True when `pathname` is the nav item's page or one of its children (e.g. /goals/abc → Goals). */

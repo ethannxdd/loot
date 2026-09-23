@@ -1,5 +1,5 @@
 import { Pencil, RotateCcw, Trash2, XCircle } from 'lucide-react'
-import { categoryIcon, categoryLabel } from '@/lib/categories'
+import { categoryColor, categoryIcon, categoryLabel } from '@/lib/categories'
 import { formatCurrencyExact } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
@@ -39,43 +39,62 @@ export function ExpenseRow({
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-[10px] px-2 py-2.5 sm:gap-3 transition-colors ${
-        isDeleted ? 'opacity-60' : 'hover:bg-white/[0.04]'
+      className={`group -mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors ${
+        isDeleted ? 'opacity-60' : 'hover:bg-fill'
       }`}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.08]">
-        <Icon size={16} strokeWidth={1.75} />
+      <div
+        className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[11px] text-white"
+        style={{ background: isDeleted ? 'var(--chart-7)' : categoryColor(expense.category) }}
+      >
+        <Icon size={16} strokeWidth={2.1} />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 break-words text-sm font-medium sm:truncate">{expense.name}</p>
-        <p className="truncate text-xs text-text-muted">
+      <div
+        className="min-w-0 flex-1"
+        {...(onEdit && !readOnly && !isDeleted
+          ? {
+              role: 'button',
+              tabIndex: -1,
+              onClick: () => {
+                // Touch screens: tapping the row opens the editor (the edit/remove icons are desktop-only).
+                if (window.matchMedia('(hover: none)').matches) onEdit()
+              },
+            }
+          : {})}
+      >
+        <p className="line-clamp-2 break-words text-[15px] font-semibold tracking-[-0.005em] sm:truncate">{expense.name}</p>
+        <p className="truncate text-[12.5px] text-muted-foreground">
           {categoryLabel(expense.category)}
           {expense.due_day ? ` · due ${expense.due_day}${ordinalSuffix(expense.due_day)}` : ''}
           {ownerLabel ? ` · ${ownerLabel}` : ''}
         </p>
       </div>
-      <div className="tnum shrink-0 text-right text-sm">
+      <div className="tnum shrink-0 text-right text-[15px] font-semibold">
         {expense.original_currency && expense.original_amount != null ? (
           <>
             {formatCurrencyExact(expense.original_amount, expense.original_currency)}
-            <span className="ml-0.5 font-normal text-text-muted">
+            <span className="ml-0.5 font-medium text-text-subtle">
               {FREQUENCY_SHORT[expense.frequency] ?? ''}
             </span>
-            <span className="block text-[11px] font-normal text-text-muted">
+            <span className="block text-[11.5px] font-medium text-text-subtle">
               ≈ {formatCurrencyExact(expense.amount)}
             </span>
           </>
         ) : (
           <>
             {formatCurrencyExact(expense.amount)}
-            <span className="ml-0.5 font-normal text-text-muted">
+            <span className="ml-0.5 font-medium text-text-subtle">
               {FREQUENCY_SHORT[expense.frequency] ?? ''}
             </span>
           </>
         )}
       </div>
-      {/* Always visible on touch screens (there is no hover); revealed on hover/focus on desktop. */}
-      <div className="flex shrink-0 items-center opacity-100 sm:gap-1 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+      {/* Desktop: revealed on hover/focus. Touch: hidden — tap the row to edit (remove lives in the editor). Removed rows always show restore/delete. */}
+      <div
+        className={`shrink-0 items-center gap-0.5 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 ${
+          isDeleted ? 'flex' : 'hidden [@media(hover:hover)]:flex'
+        }`}
+      >
         {readOnly ? null : isDeleted ? (
           <>
             <button
@@ -83,7 +102,7 @@ export function ExpenseRow({
               onClick={onRestore}
               disabled={isPending}
               aria-label={`Restore ${expense.name}`}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-primary"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-primary"
             >
               <RotateCcw size={15} strokeWidth={1.75} />
             </button>
@@ -93,7 +112,7 @@ export function ExpenseRow({
                 onClick={onDeleteForever}
                 disabled={isPending}
                 aria-label={`Delete ${expense.name} permanently`}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-alert"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-alert"
               >
                 <XCircle size={15} strokeWidth={1.75} />
               </button>
@@ -105,7 +124,7 @@ export function ExpenseRow({
               type="button"
               onClick={onEdit}
               aria-label={`Edit ${expense.name}`}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-foreground"
             >
               <Pencil size={14} strokeWidth={1.75} />
             </button>
@@ -114,7 +133,7 @@ export function ExpenseRow({
               onClick={onDelete}
               disabled={isPending}
               aria-label={`Remove ${expense.name}`}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-alert"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-alert"
             >
               <Trash2 size={14} strokeWidth={1.75} />
             </button>

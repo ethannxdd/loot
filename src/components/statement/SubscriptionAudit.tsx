@@ -19,27 +19,25 @@ export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
   const totalMonthly = subscriptions.filter((s) => !s.marked_cancel).reduce((sum, s) => sum + s.amount, 0)
 
   return (
-    <div className="card space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="overline-label">Subscription audit</p>
-        <span className="tnum text-xs text-muted-foreground">{formatCurrency(totalMonthly)}/mo active</span>
+    <div className="card !pb-2">
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="card-title">Subscriptions found</h3>
+        <span className="tnum text-[13px] font-semibold text-muted-foreground">{formatCurrency(totalMonthly)}/mo active</span>
       </div>
-      <div className="space-y-2">
+      <div className="divide-y divide-hairline">
         {subscriptions.map((sub) => (
           <div
             key={sub.id}
-            className={`flex items-center justify-between rounded-lg px-3.5 py-2.5 ${
-              sub.marked_cancel ? 'bg-alert/5 opacity-60' : 'bg-surface-2'
-            }`}
+            className={`flex items-center justify-between gap-3 py-3 ${sub.marked_cancel ? 'opacity-60' : ''}`}
           >
-            <div>
-              <p className="text-sm font-semibold">{sub.service_name}</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="min-w-0">
+              <p className={`truncate text-[15px] font-semibold ${sub.marked_cancel ? 'line-through' : ''}`}>{sub.service_name}</p>
+              <p className="text-[12.5px] text-muted-foreground">
                 {sub.marked_cancel ? 'Marked for cancellation' : `Last charged ${sub.last_charged ?? 'recently'}`}
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="tnum text-sm">{formatCurrency(sub.amount)}</span>
+              <span className="tnum text-[15px] font-semibold">{formatCurrency(sub.amount)}</span>
               <button
                 type="button"
                 onClick={() =>
@@ -48,7 +46,7 @@ export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
                     { onSuccess: () => toast(sub.marked_cancel ? `Keeping ${sub.service_name}` : `${sub.service_name} marked for cancellation`) },
                   )
                 }
-                className="btn btn-ghost !px-2.5 !py-1.5 text-xs"
+                className="btn btn-ghost !min-h-8 !px-3 !text-[13px]"
               >
                 {sub.marked_cancel ? (
                   <>
@@ -66,7 +64,7 @@ export function SubscriptionAudit({ subscriptions }: SubscriptionAuditProps) {
                   remove.mutate(sub.id, { onSuccess: () => toast.success(`${sub.service_name} removed from the audit`) })
                 }
                 aria-label={`Remove ${sub.service_name}`}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert"
+                className="grid h-9 w-9 place-items-center rounded-full text-text-subtle hover:bg-fill hover:text-alert"
               >
                 <Trash2 size={13} strokeWidth={1.75} />
               </button>

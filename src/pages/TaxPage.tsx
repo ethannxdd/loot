@@ -1,4 +1,7 @@
 import { Settings } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { StatStrip } from '@/components/ui/StatStrip'
+import { formatCurrency } from '@/lib/utils'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -37,16 +40,17 @@ export function TaxPage() {
   }, [editingSetup])
 
   if (taxProfileLoading) {
-    return <div className="skeleton h-96 rounded-2xl" />
+    return <div className="skeleton h-96 rounded-[22px]" />
   }
 
   if (!taxProfile) {
     return (
       <div className="animate-enter mx-auto max-w-lg space-y-6">
-        <header className="text-center">
-          <h1 className="text-[32px] font-bold tracking-[-0.025em]">Tax Centre</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Let's set up your tax profile first.</p>
-        </header>
+        <PageHeader
+          eyebrow={`Planning · ${taxYear} tax year`}
+          title="Tax centre"
+          subtitle="Answer a few questions and Loot will estimate your tax, refund and deadlines."
+        />
         <TaxSetupForm
           isSubmitting={upsertTaxProfile.isPending}
           onSubmit={(values) => upsertTaxProfile.mutate(values, { onSuccess: () => toast.success('Tax profile saved') })}
@@ -64,15 +68,32 @@ export function TaxPage() {
 
   return (
     <div className="animate-enter space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[32px] font-bold tracking-[-0.025em]">Tax Centre</h1>
-          <p className="mt-1 text-sm text-muted-foreground">SARS-aligned estimates for the {taxYear} tax year.</p>
-        </div>
-        <button type="button" onClick={() => setEditingSetup(true)} className="btn btn-ghost">
-          <Settings size={15} strokeWidth={1.75} /> Edit profile
-        </button>
-      </header>
+      <PageHeader
+        eyebrow={`Planning · ${taxYear} tax year`}
+        title="Tax centre"
+        subtitle="Estimates based on SARS tables. A guide, not a tax return."
+        actions={
+          <button type="button" onClick={() => setEditingSetup(true)} className="btn btn-secondary">
+            <Settings size={16} strokeWidth={2} /> Edit tax profile
+          </button>
+        }
+      />
+
+      {estimate && (
+        <div data-tutorial="tax-summary"><StatStrip
+          items={[
+            { label: 'Tax for the year', value: formatCurrency(estimate.annualLiability) },
+            { label: 'Per month', value: formatCurrency(estimate.monthlyPaye) },
+            { label: 'Effective rate', value: `${estimate.effectiveRate.toFixed(1)}%`, sub: `Top bracket ${estimate.marginalRate}%` },
+            {
+              label: estimate.refundOrOweEstimate > 0 ? 'Likely refund' : estimate.refundOrOweEstimate < 0 ? 'Still to pay' : 'Refund or owe',
+              value: formatCurrency(Math.abs(estimate.refundOrOweEstimate)),
+              sub: estimate.refundOrOweEstimate === 0 ? 'Square with SARS' : 'At assessment',
+              valueColor: estimate.refundOrOweEstimate > 0 ? 'var(--accent)' : estimate.refundOrOweEstimate < 0 ? 'var(--alert)' : undefined,
+            },
+          ]}
+        /></div>
+      )}
 
       {editingSetup && (
         <div ref={editFormRef} className="animate-enter">
@@ -90,17 +111,17 @@ export function TaxPage() {
       )}
 
       {grossAnnualIncome <= 0 && (
-        <div className="card-purple flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <p className="text-sm">Add your gross income so Loot can work out your tax.</p>
-          <Link to="/settings" className="btn btn-ghost">
-            Go to Settings
+        <div className="card flex flex-wrap items-center justify-between gap-3 !py-4">
+          <p className="text-[14px] text-muted-foreground">Add your gross income so Loot can work out your tax.</p>
+          <Link to="/settings" className="btn btn-ghost !min-h-9 !text-[13px]">
+            Set income
           </Link>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          {!yearData && <div className="skeleton h-64 rounded-2xl" />}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          {!yearData && <div className="skeleton h-64 rounded-[22px]" />}
           {estimate && <TaxEstimateCard estimate={estimate} />}
           {taxProfile.is_provisional_taxpayer === 'yes' && estimate && (
             <ProvisionalTaxCard estimates={provisionalTaxEstimates(estimate, startYear)} />
@@ -117,7 +138,7 @@ export function TaxPage() {
           )}
           <EFilingGuide profile={taxProfile} />
         </div>
-        <div className="space-y-5">
+        <div className="space-y-4">
           <TaxCalendarCard isProvisional={taxProfile.is_provisional_taxpayer === 'yes'} />
           <TaxGlossary />
         </div>

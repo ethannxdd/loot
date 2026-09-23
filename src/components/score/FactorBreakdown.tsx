@@ -25,20 +25,20 @@ const FACTOR_ORDER: (keyof ScoreFactors)[] = [
 
 export function FactorBreakdown({ factors }: { factors: ScoreFactors }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3.5">
       {FACTOR_ORDER.map((key) => {
         const value = factors[key]
         const meta = FACTOR_META[key]
         const color = scoreColor(value)
         return (
           <div key={key}>
-            <div className="mb-1 flex items-baseline justify-between text-xs">
+            <div className="mb-1.5 flex items-baseline justify-between text-[14px]">
               <span className="font-medium">
-                {meta.label} <span className="text-text-muted">· {meta.weight}</span>
+                {meta.label} <span className="text-text-subtle">· {meta.weight}</span>
               </span>
-              <span className="tnum font-semibold">{Math.round(value)}</span>
+              <span className="tnum font-semibold">{Math.round(value / 9.99)}<span className="font-normal text-text-subtle"> /100</span></span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
+            <div className="h-2 overflow-hidden rounded-full bg-fill-2">
               <div
                 className={`h-full rounded-full ${BAR_COLOR[color]}`}
                 style={{ width: `${Math.min(100, (value / 999) * 100)}%` }}

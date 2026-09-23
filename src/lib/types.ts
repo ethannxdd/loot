@@ -206,6 +206,8 @@ export interface AffordabilityCheck {
 export interface PlannerExpenseItem {
   name: string
   amount: number
+  /** Optional expense category (same 25 as expenses) — shown in exports. Stored inside the phases jsonb. */
+  category?: string
 }
 
 export interface PlannerPhase {

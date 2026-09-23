@@ -177,3 +177,58 @@ export const GOAL_CATEGORY_ICONS: Record<GoalCategory, LucideIcon> = {
 export function goalCategoryIcon(category: string): LucideIcon {
   return GOAL_CATEGORY_ICONS[category as GoalCategory] ?? PiggyBank
 }
+
+/**
+ * v2 category colour — categories are grouped into families so related spend reads as one colour
+ * (all food orange, all car/travel teal, …). Returns a CSS colour token that follows light/dark theme.
+ * Green (chart-1) is reserved for saving & growing, matching "green = money working for you".
+ */
+const CATEGORY_FAMILY: Partial<Record<ExpenseCategory, number>> = {
+  housing: 2,
+  household: 2,
+  transport: 3,
+  vehicle_finance: 3,
+  travel_holidays: 3,
+  groceries: 4,
+  eating_out: 4,
+  coffee_drinks: 4,
+  debt_repayments: 5,
+  clothing_shopping: 5,
+  entertainment: 5,
+  insurance: 6,
+  medical_aid: 6,
+  health_beauty: 6,
+  childcare: 6,
+  pets: 6,
+  savings: 1,
+  investments: 1,
+  side_business: 1,
+  subscriptions: 7,
+  tech_gadgets: 7,
+  phone_airtime: 7,
+  education: 2,
+  giving_charity: 5,
+  government_admin: 7,
+  other: 7,
+}
+
+export function categoryColor(category: string): string {
+  return `var(--chart-${CATEGORY_FAMILY[category as ExpenseCategory] ?? 7})`
+}
+
+const GOAL_FAMILY: Partial<Record<GoalCategory, number>> = {
+  emergency_fund: 1,
+  travel: 3,
+  home: 2,
+  vehicle: 3,
+  education: 2,
+  wedding: 5,
+  debt_payoff: 5,
+  tech: 4,
+  other: 6,
+}
+
+/** Theme-aware colour for a savings-goal category (see categoryColor). */
+export function goalCategoryColor(category: string): string {
+  return `var(--chart-${GOAL_FAMILY[category as GoalCategory] ?? 6})`
+}

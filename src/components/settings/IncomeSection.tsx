@@ -1,4 +1,4 @@
-import { Check, Loader2, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
+import { Check, Layers, Loader2, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
@@ -13,6 +13,7 @@ import { useUpdateProfile } from '@/hooks/useProfile'
 import { monthlyIncomeAmount } from '@/lib/money'
 import type { IncomeFrequency, IncomeStream, Profile } from '@/lib/types'
 import { formatCurrencyExact } from '@/lib/utils'
+import { SettingsHeading } from '@/components/settings/SettingsHeading'
 
 const FREQUENCY_LABELS: Record<IncomeFrequency, string> = {
   monthly: 'Monthly',
@@ -103,9 +104,7 @@ export function IncomeSection({ profile }: { profile: Profile }) {
   return (
     <>
       <form onSubmit={saveTotals} className="card space-y-4">
-        <div className="overline-label flex items-center gap-1.5">
-          <Wallet size={13} strokeWidth={2} /> Monthly income
-        </div>
+        <SettingsHeading icon={Wallet} title="Monthly income" description="What you earn before and after tax." />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="field-label" htmlFor="settings-gross">
@@ -120,7 +119,7 @@ export function IncomeSection({ profile }: { profile: Profile }) {
             <input id="settings-net" type="number" inputMode="decimal" min={0} step="any" value={net} onChange={(e) => setNet(e.target.value)} />
           </div>
         </div>
-        <p className="text-xs text-text-muted">
+        <p className="text-[13px] text-muted-foreground">
           These monthly figures drive your available loot, savings rate, affordability checks, forecast and tax estimate.
         </p>
         {validNumbers && netNum > grossNum && grossNum > 0 && (
@@ -133,27 +132,32 @@ export function IncomeSection({ profile }: { profile: Profile }) {
       </form>
 
       <section className="card space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="overline-label">Income streams</div>
-          {editing === null && (
-            <button type="button" onClick={() => openForm()} className="btn btn-ghost !h-8 !px-3 !text-xs">
-              <Plus size={14} strokeWidth={2} /> Add stream
-            </button>
-          )}
-        </div>
+        <SettingsHeading
+          icon={Layers}
+          title="Income streams"
+          color="var(--chart-3)"
+          description="Optional — list each source and Loot adds them up."
+          trailing={
+            editing === null && (
+              <button type="button" onClick={() => openForm()} className="btn btn-secondary !min-h-9 !px-3.5 !text-[13px]">
+                <Plus size={14} strokeWidth={2.4} /> Add
+              </button>
+            )
+          }
+        />
 
         {streams.length === 0 && editing === null && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[14px] text-muted-foreground">
             Have a salary plus freelance work, or a side hustle? Add each stream here and Loot will total them for you.
           </p>
         )}
 
         {streams.length > 0 && (
-          <ul className="space-y-1">
+          <ul className="divide-y divide-hairline overflow-hidden rounded-2xl bg-fill">
             {streams.map((stream) => (
               <li
                 key={stream.id}
-                className={`group flex items-center gap-3 rounded-[10px] px-2 py-2.5 ${stream.is_active ? '' : 'opacity-50'}`}
+                className={`group flex items-center gap-3 px-3.5 py-3 ${stream.is_active ? '' : 'opacity-50'}`}
               >
                 <button
                   type="button"
@@ -161,34 +165,34 @@ export function IncomeSection({ profile }: { profile: Profile }) {
                   aria-label={stream.is_active ? `Pause ${stream.name}` : `Resume ${stream.name}`}
                   title={stream.is_active ? 'Active — click to pause' : 'Paused — click to resume'}
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                    stream.is_active ? 'border-primary bg-primary text-primary-foreground' : 'border-border'
+                    stream.is_active ? 'border-primary bg-primary text-white' : 'border-text-subtle'
                   }`}
                 >
                   {stream.is_active && <Check size={12} strokeWidth={3} />}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{stream.name}</p>
-                  <p className="truncate text-xs text-text-muted">
+                  <p className="truncate text-[15px] font-medium">{stream.name}</p>
+                  <p className="truncate text-[13px] text-muted-foreground">
                     {FREQUENCY_LABELS[stream.frequency]} · gross {formatCurrencyExact(stream.gross_amount)}
                   </p>
                 </div>
-                <span className="tnum shrink-0 text-sm">{formatCurrencyExact(stream.net_amount)}</span>
+                <span className="tnum shrink-0 text-[15px] font-semibold">{formatCurrencyExact(stream.net_amount)}</span>
                 <div className="flex shrink-0 gap-1 md:opacity-0 md:transition-opacity md:group-focus-within:opacity-100 md:group-hover:opacity-100">
                   <button
                     type="button"
                     onClick={() => openForm(stream)}
                     aria-label={`Edit ${stream.name}`}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-foreground"
                   >
-                    <Pencil size={14} strokeWidth={1.75} />
+                    <Pencil size={14} strokeWidth={2} />
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(stream)}
                     aria-label={`Delete ${stream.name}`}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-alert"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-alert"
                   >
-                    <Trash2 size={14} strokeWidth={1.75} />
+                    <Trash2 size={14} strokeWidth={2} />
                   </button>
                 </div>
               </li>
@@ -197,13 +201,13 @@ export function IncomeSection({ profile }: { profile: Profile }) {
         )}
 
         {activeStreams.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-hairline bg-white/[0.03] p-3.5">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-fill p-3.5">
+            <p className="text-[13px] text-muted-foreground">
               Active streams add up to <span className="tnum font-semibold text-foreground">{formatCurrencyExact(streamNet)}</span> net /{' '}
               <span className="tnum font-semibold text-foreground">{formatCurrencyExact(streamGross)}</span> gross a month.
             </p>
             {streamsDifferFromTotals && (
-              <button type="button" onClick={applyStreamTotals} disabled={update.isPending} className="btn btn-secondary !h-8 !px-3 !text-xs">
+              <button type="button" onClick={applyStreamTotals} disabled={update.isPending} className="btn btn-secondary !min-h-9 !px-3.5 !text-[13px]">
                 Use these as my income
               </button>
             )}
@@ -211,7 +215,7 @@ export function IncomeSection({ profile }: { profile: Profile }) {
         )}
 
         {editing !== null && (
-          <form onSubmit={submitStream} className="space-y-3 rounded-xl border border-border bg-white/[0.03] p-4">
+          <form onSubmit={submitStream} className="space-y-3 rounded-2xl bg-fill p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="field-label" htmlFor="stream-name">

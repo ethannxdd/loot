@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Select } from '@/components/ui/Select'
+import { Switch } from '@/components/ui/Switch'
 import { GOAL_CATEGORIES, GOAL_CATEGORY_LABELS } from '@/lib/categories'
 import type { NewGoal, SavingsGoal } from '@/lib/types'
 
@@ -133,26 +134,20 @@ export function GoalForm({
         />
       </div>
 
-      <div className="space-y-3 rounded-xl border border-hairline p-3.5">
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={auto}
-            onChange={(e) => setAuto(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-primary"
-            style={{ width: 'auto' }}
-          />
-          <span>
-            <span className="block text-sm font-semibold">Auto-fund from my spare loot</span>
-            <span className="block text-xs text-text-muted">
-              Each month Loot adds a share of what's left after your safety buffer to this goal's progress. It only
+      <div className="space-y-3 rounded-xl bg-surface-2 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[15px] font-medium">Auto-fund from my spare loot</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
+              Each month Loot adds a share of what&apos;s left after your safety buffer to this goal&apos;s progress. It only
               tracks the amount — it never moves real money, so still make the transfer with your bank. Off = you log
               contributions yourself.
-            </span>
-          </span>
-        </label>
+            </p>
+          </div>
+          <Switch checked={auto} onChange={setAuto} label="Auto-fund from my spare loot" />
+        </div>
         {auto && (
-          <div>
+          <div className="border-t border-hairline pt-3">
             <label className="field-label" htmlFor="goal-weight">
               Share weight
             </label>
@@ -166,7 +161,7 @@ export function GoalForm({
               onChange={(e) => setWeight(e.target.value)}
               className="max-w-28"
             />
-            <p className="mt-1.5 text-xs text-text-muted">
+            <p className="mt-1.5 text-[12.5px] text-muted-foreground">
               A goal with weight 2 gets twice the share of one with weight 1. (Ignored if you split in priority order —
               see Settings.)
             </p>
@@ -175,7 +170,7 @@ export function GoalForm({
       </div>
 
       {error && (
-        <p role="alert" className="text-xs text-alert">
+        <p role="alert" className="text-[13px] font-medium text-alert">
           {error}
         </p>
       )}

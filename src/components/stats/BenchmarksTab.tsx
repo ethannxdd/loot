@@ -19,11 +19,13 @@ export function BenchmarksTab({
 
   if (eligible.length === 0) {
     return (
-      <div className="card-elevated flex flex-col items-center gap-3 py-12 text-center">
-        <BarChart3 size={28} strokeWidth={1.75} className="text-text-muted" />
-        <div className="space-y-1">
-          <p className="text-sm font-bold">Not enough data yet</p>
-          <p className="max-w-xs text-xs text-text-muted">
+      <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-fill text-muted-foreground">
+          <BarChart3 size={28} strokeWidth={1.8} />
+        </span>
+        <div className="space-y-1.5">
+          <p className="text-[20px] font-bold tracking-[-0.02em]">Not enough data yet</p>
+          <p className="max-w-sm text-[14px] text-muted-foreground">
             Benchmarks for the {INCOME_BRACKET_LABELS[bracket]} bracket need at least{' '}
             {BENCHMARK_MIN_SAMPLE} Loot users before they're reliable. Check back once Loot has
             more users in your bracket.
@@ -37,22 +39,28 @@ export function BenchmarksTab({
   const userTotal = Object.values(userTotals).reduce((s, v) => s + v, 0)
 
   return (
-    <div className="card space-y-3">
-      <div className="overline-label">Your spend vs the {INCOME_BRACKET_LABELS[bracket]} bracket</div>
+    <div className="card space-y-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="card-title">You vs the {INCOME_BRACKET_LABELS[bracket]} bracket</h3>
+        <div className="flex gap-4 text-[12.5px] text-muted-foreground">
+          <span className="flex items-center gap-1.5"><i className="inline-block h-2 w-2 rounded-[3px] bg-primary" /> You</span>
+          <span className="flex items-center gap-1.5"><i className="inline-block h-2 w-2 rounded-[3px] bg-fill-2" /> Average</span>
+        </div>
+      </div>
       {eligible.map((b) => {
         const userAmount = userTotals[b.category] ?? 0
         const userPct = userTotal > 0 ? (userAmount / userTotal) * 100 : 0
         return (
           <div key={b.category} className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">{categoryLabel(b.category)}</span>
-              <span className="tnum">
+            <div className="flex justify-between text-[13.5px]">
+              <span className="font-medium">{categoryLabel(b.category)}</span>
+              <span className="tnum text-muted-foreground">
                 You {userPct.toFixed(0)}% · Avg {b.avg_pct.toFixed(0)}%
               </span>
             </div>
-            <div className="relative h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="relative h-2.5 overflow-hidden rounded-full bg-fill">
               <div
-                className="absolute inset-y-0 left-0 rounded-full bg-secondary/50"
+                className="absolute inset-y-0 left-0 rounded-full bg-fill-2"
                 style={{ width: `${Math.min(100, b.avg_pct)}%` }}
               />
               <div

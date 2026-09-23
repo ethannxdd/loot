@@ -6,16 +6,16 @@ import { Logo } from '@/components/ui/Logo'
 export function NotFoundPage() {
   return (
     <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-4 p-6 text-center">
-      <Logo size={40} />
+      <Logo size={56} />
       <div>
-        <h1 className="text-2xl font-bold tracking-[-0.02em]">That page doesn't exist</h1>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          The link may be old, or the page may have moved. Let's get you back to your loot.
+        <h1 className="text-[28px] font-bold tracking-[-0.03em]">That page doesn’t exist</h1>
+        <p className="mt-1.5 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
+          The link may be old, or the page may have moved. Let’s get you back to your loot.
         </p>
       </div>
       <Link to="/dashboard" className="btn btn-primary">
-        <Compass size={16} strokeWidth={1.75} />
-        Back to dashboard
+        <Compass size={16} strokeWidth={2} />
+        Back to Summary
       </Link>
     </div>
   )
@@ -26,20 +26,20 @@ export function ErrorPage({ error, reset }: { error: unknown; reset?: () => void
   const message = error instanceof Error ? error.message : 'An unexpected error occurred.'
   return (
     <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-4 p-6 text-center">
-      <Logo size={40} />
+      <Logo size={56} />
       <div>
-        <h1 className="text-2xl font-bold tracking-[-0.02em]">Something went wrong</h1>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{message}</p>
+        <h1 className="text-[28px] font-bold tracking-[-0.03em]">Something went wrong</h1>
+        <p className="mt-1.5 max-w-sm text-[15px] leading-relaxed text-muted-foreground">{message}</p>
       </div>
       <div className="flex gap-2">
         {reset && (
           <button type="button" onClick={reset} className="btn btn-primary">
-            <RotateCcw size={16} strokeWidth={1.75} />
+            <RotateCcw size={16} strokeWidth={2} />
             Try again
           </button>
         )}
-        <Link to="/dashboard" className="btn btn-ghost">
-          Go to dashboard
+        <Link to="/dashboard" className="btn btn-secondary">
+          Go to Summary
         </Link>
       </div>
     </div>

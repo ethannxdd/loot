@@ -1,6 +1,8 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Select } from '@/components/ui/Select'
+import { Segmented } from '@/components/ui/Segmented'
+import { SwitchRow } from '@/components/ui/Switch'
 import { useProfile } from '@/hooks/useProfile'
 import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from '@/lib/categories'
 import {
@@ -19,6 +21,8 @@ interface ExpenseFormProps {
   submitLabel?: string
   onSubmit: (values: NewExpense) => void
   onCancel?: () => void
+  /** Edit mode: shows a "Remove expense" action (soft delete, undoable). */
+  onDelete?: () => void
 }
 
 const FREQUENCY_LABELS: Record<ExpenseFrequency, string> = {
@@ -37,6 +41,7 @@ export function ExpenseForm({
   submitLabel = 'Add expense',
   onSubmit,
   onCancel,
+  onDelete,
 }: ExpenseFormProps) {
   const { data: profile } = useProfile()
   const homeCurrency = profile?.currency_code ?? 'ZAR'
@@ -195,60 +200,53 @@ export function ExpenseForm({
 
       {!compact && (
         <>
-          <div className="flex items-center gap-2 rounded-[10px] border border-border bg-input p-1">
-            <button
-              type="button"
-              onClick={() => setIsFixed(true)}
-              aria-pressed={isFixed}
-              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
-                isFixed ? 'bg-surface-3 text-foreground' : 'text-text-muted'
-              }`}
-            >
-              Fixed
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsFixed(false)}
-              aria-pressed={!isFixed}
-              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
-                !isFixed ? 'bg-surface-3 text-foreground' : 'text-text-muted'
-              }`}
-            >
-              Variable
-            </button>
+          <div>
+            <span className="field-label">Type</span>
+            <Segmented
+              full
+              label="Expense type"
+              value={isFixed ? 'fixed' : 'variable'}
+              onChange={(v) => setIsFixed(v === 'fixed')}
+              options={[
+                { value: 'fixed', label: 'Fixed — same every month' },
+                { value: 'variable', label: 'Variable — changes' },
+              ]}
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label" htmlFor="expense-due-day">
-                Due day (optional)
-              </label>
-              <input
-                id="expense-due-day"
-                type="number"
-                min={1}
-                max={31}
-                value={dueDay}
-                onChange={(e) => setDueDay(e.target.value)}
-                placeholder="1–31"
-              />
-            </div>
-            <label className="flex items-center gap-2 self-end pb-2.5 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={notifyEnabled}
-                onChange={(e) => setNotifyEnabled(e.target.checked)}
-                className="h-4 w-4 accent-primary"
-                style={{ width: 'auto' }}
-              />
-              Remind me
+          <div>
+            <label className="field-label" htmlFor="expense-due-day">
+              Due day (optional)
             </label>
+            <input
+              id="expense-due-day"
+              type="number"
+              min={1}
+              max={31}
+              value={dueDay}
+              onChange={(e) => setDueDay(e.target.value)}
+              placeholder="Day of the month, 1–31"
+            />
+          </div>
+
+          <div className="divide-y divide-hairline rounded-xl bg-surface-2 px-4 py-1">
+            <SwitchRow
+              label="Remind me before it's due"
+              checked={notifyEnabled}
+              onChange={setNotifyEnabled}
+            />
+            <SwitchRow
+              label="Work-related"
+              hint="May be tax-deductible — shows up in the Tax centre"
+              checked={workRelated}
+              onChange={setWorkRelated}
+            />
           </div>
 
           {notifyEnabled && (
             <div>
               <label className="field-label" htmlFor="expense-lead-days">
-                Remind me
+                When to remind you
               </label>
               <Select
                 id="expense-lead-days"
@@ -262,21 +260,11 @@ export function ExpenseForm({
             </div>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={workRelated}
-              onChange={(e) => setWorkRelated(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-              style={{ width: 'auto' }}
-            />
-            Work-related (may be tax-deductible)
-          </label>
         </>
       )}
 
       {error && (
-        <p role="alert" className="text-xs text-alert">
+        <p role="alert" className="text-[13px] font-medium text-alert">
           {error}
         </p>
       )}
@@ -292,6 +280,11 @@ export function ExpenseForm({
           {submitLabel}
         </button>
       </div>
+      {onDelete && (
+        <button type="button" onClick={onDelete} className="w-full py-2 text-[15px] font-semibold text-alert">
+          Remove expense
+        </button>
+      )}
     </form>
   )
 }

@@ -151,7 +151,7 @@ function briefingReadyNotification(latestBriefingMonth: string | null): NewNotif
   ]
 }
 
-/** Loot Score moved by a meaningful amount month-on-month. */
+/** Loot Score habits index (0–999 internally, shown /100) moved by a meaningful amount month-on-month. */
 function scoreChangeNotification(latest: BudgeScore | null, previous: BudgeScore | null): NewNotificationCandidate[] {
   if (!latest || !previous) return []
   const delta = latest.score - previous.score
@@ -159,8 +159,8 @@ function scoreChangeNotification(latest: BudgeScore | null, previous: BudgeScore
   return [
     {
       kind: 'score_change',
-      title: `Your Loot Score ${delta > 0 ? 'improved' : 'dropped'}`,
-      body: `${delta > 0 ? '+' : ''}${Math.round(delta)} points vs last month, now ${Math.round(latest.score)}.`,
+      title: `Your money habits ${delta > 0 ? 'improved' : 'slipped'}`,
+      body: `${delta > 0 ? '+' : ''}${Math.round(delta / 9.99)} vs last month, now ${Math.round(latest.score / 9.99)}/100 on your Loot Score habits rating.`,
       link: '/settings',
       dedupe_key: `score_change:${latest.month}`,
     },

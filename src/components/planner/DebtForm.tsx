@@ -111,7 +111,7 @@ export function DebtForm({ initial, isSubmitting, submitLabel = 'Add debt', onSu
       </div>
 
       {error && (
-        <p role="alert" className="text-xs text-alert">
+        <p role="alert" className="text-[13px] font-medium text-alert">
           {error}
         </p>
       )}

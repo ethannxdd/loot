@@ -20,21 +20,21 @@ const config: CapacitorConfig = {
   appId: 'com.knowyourloot.app',
   appName: 'Loot',
   webDir: 'dist',
-  backgroundColor: '#0F0A0A',
+  backgroundColor: '#F2F2EF',
   server: {
     androidScheme: 'https',
   },
   ios: {
     contentInset: 'always',
-    backgroundColor: '#0F0A0A',
+    backgroundColor: '#F2F2EF',
   },
   android: {
-    backgroundColor: '#0F0A0A',
+    backgroundColor: '#F2F2EF',
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0,
-      backgroundColor: '#0F0A0A',
+      backgroundColor: '#F2F2EF',
       showSpinner: false,
     },
   },

@@ -86,7 +86,7 @@ export function AssistantPage() {
             <div
               key={c.id}
               className={`group flex items-center gap-1 rounded-lg px-3 py-2 text-sm ${
-                c.id === activeId ? 'bg-surface-3 font-semibold' : 'text-muted-foreground hover:bg-white/[0.06]'
+                c.id === activeId ? 'bg-surface-3 font-semibold' : 'text-muted-foreground hover:bg-fill'
               }`}
             >
               <button type="button" onClick={() => setActiveId(c.id)} className="min-w-0 flex-1 truncate text-left">
@@ -99,7 +99,7 @@ export function AssistantPage() {
                   if (activeId === c.id) setActiveId(null)
                 }}
                 aria-label="Delete conversation"
-                className="shrink-0 rounded-full p-1 text-text-muted opacity-0 hover:bg-white/10 hover:text-alert group-hover:opacity-100"
+                className="shrink-0 rounded-full p-1 text-text-muted opacity-0 hover:bg-fill hover:text-alert group-hover:opacity-100"
               >
                 <Trash2 size={13} strokeWidth={1.75} />
               </button>

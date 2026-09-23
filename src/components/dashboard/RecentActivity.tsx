@@ -1,9 +1,21 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowUpRight } from 'lucide-react'
-import { categoryIcon, categoryLabel } from '@/lib/categories'
-import { formatCurrency } from '@/lib/utils'
+import { ChevronRight } from 'lucide-react'
+import { categoryColor, categoryIcon, categoryLabel } from '@/lib/categories'
+import { formatCurrencyExact } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
+const FREQ: Record<string, string> = { monthly: '/mo', weekly: '/wk', annual: '/yr', 'once-off': ' once' }
+
+function addedLabel(iso: string) {
+  const d = new Date(iso)
+  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
+  if (days <= 0) return 'Added today'
+  if (days === 1) return 'Added yesterday'
+  if (days < 7) return `Added ${d.toLocaleDateString('en-ZA', { weekday: 'long' })}`
+  return `Added ${d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
+}
+
+/** The five most recently added expenses. */
 export function RecentActivity({ expenses }: { expenses: Expense[] }) {
   const recent = expenses
     .filter((e) => !e.deleted_at)
@@ -13,32 +25,38 @@ export function RecentActivity({ expenses }: { expenses: Expense[] }) {
   if (recent.length === 0) return null
 
   return (
-    <div className="space-y-3">
-      <div className="overline-label px-1">Recent activity</div>
-      <div className="card space-y-1">
+    <section className="card h-full">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="card-title">Recently added</h3>
+        <Link to="/expenses" className="inline-flex items-center text-[13px] font-semibold text-primary">
+          See all <ChevronRight size={15} />
+        </Link>
+      </div>
+      <ul className="divide-y divide-hairline">
         {recent.map((expense) => {
           const Icon = categoryIcon(expense.category)
           return (
-            <div key={expense.id} className="flex items-center gap-3 rounded-[10px] px-2 py-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08]">
-                <Icon size={14} strokeWidth={1.75} />
+            <li key={expense.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+              <span
+                className="grid h-[38px] w-[38px] place-items-center rounded-[11px] text-white"
+                style={{ background: categoryColor(expense.category) }}
+              >
+                <Icon size={16} strokeWidth={2.1} />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold">{expense.name}</p>
+                <p className="truncate text-[12.5px] text-muted-foreground">
+                  {categoryLabel(expense.category)} · {addedLabel(expense.created_at)}
+                </p>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{expense.name}</p>
-                <p className="truncate text-xs text-text-muted">{categoryLabel(expense.category)}</p>
-              </div>
-              <span className="tnum shrink-0 text-sm">{formatCurrency(expense.amount)}</span>
-            </div>
+              <span className="tnum text-right text-[14px] font-semibold">
+                {formatCurrencyExact(expense.amount)}
+                <span className="font-medium text-text-subtle">{FREQ[expense.frequency] ?? ''}</span>
+              </span>
+            </li>
           )
         })}
-      </div>
-      <Link
-        to="/expenses"
-        className="card-gradient flex items-center justify-between px-5 py-4 text-sm font-bold text-primary-foreground"
-      >
-        View all expenses
-        <ArrowUpRight size={16} strokeWidth={2} />
-      </Link>
-    </div>
+      </ul>
+    </section>
   )
 }

@@ -5,6 +5,7 @@ import { StrictMode, useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { toast, Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
+import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import { useAuth } from '@/hooks/useAuth'
 import { queryClient, router } from './router'
 import './styles.css'
@@ -45,13 +46,20 @@ function InnerApp() {
   return <RouterProvider router={router} context={{ auth, queryClient }} />
 }
 
+function ThemedToaster() {
+  const { resolved } = useTheme()
+  return <Toaster theme={resolved} position="top-center" richColors />
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <InnerApp />
-      </AuthProvider>
-      <Toaster theme="dark" position="top-center" richColors />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <InnerApp />
+        </AuthProvider>
+        <ThemedToaster />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

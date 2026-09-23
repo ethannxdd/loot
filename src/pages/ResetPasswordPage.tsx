@@ -2,7 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { KeyRound, Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
-import { Logo } from '@/components/ui/Logo'
+import { AuthShell } from '@/components/auth/AuthShell'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -29,12 +29,10 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="loot-gradient flex min-h-dvh items-center justify-center p-5">
-      <div className="animate-enter card-elevated w-full max-w-sm bg-background/95 backdrop-blur-xl">
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <Logo size={40} />
-          <h1 className="text-xl font-bold">Choose a new password</h1>
-        </div>
+    <AuthShell
+      title={user ? 'Choose a new password' : 'This link has expired'}
+      subtitle={user ? 'At least 6 characters. You’ll stay signed in afterwards.' : undefined}
+    >
 
         {user ? (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -65,26 +63,25 @@ export function ResetPasswordPage() {
               />
             </div>
             {error && (
-              <p role="alert" className="text-xs text-alert">
+              <p role="alert" className="text-[13px] font-medium text-alert">
                 {error}
               </p>
             )}
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
+            <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full !min-h-12 !text-[16px]">
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
               Update password
             </button>
           </form>
         ) : (
-          <div className="space-y-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              This reset link has expired or was already used. Request a new one from the sign-in page.
+          <div className="space-y-5">
+            <p className="text-[16px] leading-relaxed text-muted-foreground">
+              Reset links work once and expire after a while. Request a new one from the sign-in page.
             </p>
-            <Link to="/auth" className="btn btn-primary w-full">
+            <Link to="/auth" className="btn btn-primary w-full !min-h-12 !text-[16px]">
               Back to sign in
             </Link>
           </div>
         )}
-      </div>
-    </div>
+    </AuthShell>
   )
 }

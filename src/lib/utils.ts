@@ -67,3 +67,10 @@ export function getGreeting(date = new Date()) {
   if (hour < 18) return 'Good afternoon'
   return 'Good evening'
 }
+
+/** Two-letter initials for an avatar, from a display name or (failing that) an email. */
+export function initials(name: string | null | undefined, email?: string | null): string {
+  const source = (name ?? '').trim() || (email ?? '').split('@')[0] || '?'
+  const parts = source.split(/\s+/).filter(Boolean)
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?'
+}

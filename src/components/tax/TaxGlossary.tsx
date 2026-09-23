@@ -12,25 +12,26 @@ export function TaxGlossary() {
   }, [query])
 
   return (
-    <div className="card space-y-3">
-      <h3 className="text-base font-bold">Tax glossary</h3>
+    <div className="card space-y-3 sm:p-6">
+      <h3 className="card-title">Tax glossary</h3>
       <div className="relative">
-        <Search size={14} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+        <Search size={16} strokeWidth={2} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-subtle" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search terms…"
-          className="!pl-9"
+          placeholder="Search terms"
+          aria-label="Search tax terms"
+          className="!pl-10"
         />
       </div>
-      <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+      <div className="max-h-96 divide-y divide-hairline overflow-y-auto pr-1">
         {results.map((g) => (
-          <div key={g.term}>
-            <p className="text-sm font-bold">{g.term}</p>
-            <p className="text-xs text-muted-foreground">{g.definition}</p>
+          <div key={g.term} className="py-2.5">
+            <p className="text-[14px] font-semibold">{g.term}</p>
+            <p className="text-[13px] leading-relaxed text-muted-foreground">{g.definition}</p>
           </div>
         ))}
-        {results.length === 0 && <p className="text-xs text-text-muted">No terms match "{query}".</p>}
+        {results.length === 0 && <p className="py-3 text-[13px] text-muted-foreground">No terms match "{query}".</p>}
       </div>
     </div>
   )

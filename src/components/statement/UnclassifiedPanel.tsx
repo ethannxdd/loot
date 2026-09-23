@@ -65,22 +65,24 @@ export function UnclassifiedPanel({ transactions, onAssign }: UnclassifiedPanelP
 
   return (
     <div className="card space-y-3">
-      <div className="flex items-center gap-2">
-        <HelpCircle size={16} strokeWidth={1.75} className="text-caution" />
-        <p className="text-sm font-bold">Needs a category</p>
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-caution/14 text-caution">
+          <HelpCircle size={16} strokeWidth={2} />
+        </span>
+        <h3 className="card-title">Needs a category</h3>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Pick a category for each merchant below. Loot remembers your choice on this device, so next month's statement
         sorts itself.
       </p>
       <div className="space-y-2">
         {groups.slice(0, 25).map((g) => (
-          <div key={g.key} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-surface-2 px-3.5 py-2.5">
+          <div key={g.key} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-surface-2 px-3.5 py-2.5">
             <div className="min-w-0 flex-1 basis-40">
-              <p className="truncate text-sm font-semibold capitalize" title={g.sample}>
+              <p className="truncate text-[14px] font-semibold capitalize" title={g.sample}>
                 {g.label}
               </p>
-              <p className="tnum text-xs text-text-muted">
+              <p className="tnum text-[12.5px] text-muted-foreground">
                 {formatCurrency(g.total)} · {g.count} transaction{g.count === 1 ? '' : 's'}
               </p>
             </div>

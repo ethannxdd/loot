@@ -1,4 +1,5 @@
-import { FileUp, Loader2, UploadCloud } from 'lucide-react'
+import { FileUp, Loader2, UploadCloud, Lock } from 'lucide-react'
+import { Segmented } from '@/components/ui/Segmented'
 import { useRef, useState, type DragEvent } from 'react'
 import type { BankId } from '@/lib/types'
 
@@ -22,25 +23,18 @@ export function UploadZone({ bank, onBankChange, onFile, isProcessing, error }: 
   }
 
   return (
-    <div className="card space-y-4">
-      <div>
-        <p className="field-label">Bank</p>
-        <div className="flex gap-2">
-          {(['fnb', 'capitec'] as const).map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => onBankChange(b)}
-              className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
-                bank === b
-                  ? 'border-primary/50 bg-primary/15 text-primary'
-                  : 'border-border bg-surface-2 text-muted-foreground'
-              }`}
-            >
-              {b === 'fnb' ? 'FNB' : 'Capitec'}
-            </button>
-          ))}
-        </div>
+    <div className="card-elevated space-y-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="card-title">Upload a statement</h2>
+        <Segmented
+          label="Bank"
+          value={bank}
+          onChange={onBankChange}
+          options={[
+            { value: 'fnb', label: 'FNB' },
+            { value: 'capitec', label: 'Capitec' },
+          ]}
+        />
       </div>
 
       <div
@@ -51,20 +45,31 @@ export function UploadZone({ bank, onBankChange, onFile, isProcessing, error }: 
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-          isDragging ? 'border-primary/60 bg-primary/5' : 'border-border hover:border-primary/30'
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            inputRef.current?.click()
+          }
+        }}
+        aria-label="Choose a statement file"
+        className={`flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
+          isDragging ? 'border-primary bg-primary/[0.06]' : 'border-border bg-surface-2 hover:border-primary/40'
         }`}
       >
-        {isProcessing ? (
-          <Loader2 size={28} strokeWidth={1.75} className="animate-spin text-primary" />
-        ) : (
-          <UploadCloud size={28} strokeWidth={1.75} className="text-muted-foreground" />
-        )}
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/12 text-primary">
+          {isProcessing ? (
+            <Loader2 size={26} strokeWidth={2} className="animate-spin" />
+          ) : (
+            <UploadCloud size={26} strokeWidth={2} />
+          )}
+        </span>
         <div>
-          <p className="text-sm font-semibold">
-            {isProcessing ? 'Reading your statement…' : 'Drag a statement here, or click to browse'}
+          <p className="text-[16px] font-semibold">
+            {isProcessing ? 'Reading your statement…' : 'Drop a statement here, or choose a file'}
           </p>
-          <p className="mt-1 text-xs text-text-muted">PDF, CSV, OFX or QFX — parsed entirely on your device</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">PDF, CSV, OFX or QFX</p>
         </div>
         <input
           ref={inputRef}
@@ -80,16 +85,19 @@ export function UploadZone({ bank, onBankChange, onFile, isProcessing, error }: 
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-alert/30 bg-alert/10 px-3 py-2.5 text-xs text-alert">
-          <FileUp size={14} strokeWidth={1.75} />
+        <div role="alert" className="flex items-start gap-2 rounded-xl bg-alert/10 px-3.5 py-3 text-[13px] font-medium text-alert">
+          <FileUp size={15} strokeWidth={2} className="mt-0.5 shrink-0" />
           {error}
         </div>
       )}
 
-      <p className="text-xs text-text-subtle">
+      <p className="flex gap-2 text-[12.5px] text-muted-foreground">
+        <Lock size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-primary" />
+        <span>
         Your statement is parsed in your browser and never uploaded anywhere. Only if you press “Save this analysis”
         are the category totals (and the names of any subscriptions found) saved to your Loot account — never the
         transactions themselves.
+        </span>
       </p>
     </div>
   )

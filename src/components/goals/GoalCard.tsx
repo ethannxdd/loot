@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, GripVertical, Loader2, Pause, Play, Sparkles } from 'lucide-react'
 import type { DragEvent } from 'react'
-import { goalCategoryIcon } from '@/lib/categories'
+import { goalCategoryColor, goalCategoryIcon } from '@/lib/categories'
 import { deadlineLabel, parseDateOnly, requiredMonthlyContribution } from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
 import type { SavingsGoal } from '@/lib/types'
@@ -49,90 +49,65 @@ export function GoalCard({
     ? parseDateOnly(goal.resume_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
     : null
 
+  const color = goal.is_completed ? 'var(--accent)' : goal.is_paused ? 'var(--chart-7)' : goalCategoryColor(goal.category)
+  const pct = Math.min(100, Math.round(progress * 100))
+  const iconBtn =
+    'grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-fill hover:text-foreground'
+
   return (
     <div
       draggable={draggable}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`card card-hover space-y-3 ${goal.is_completed ? 'opacity-80' : ''}`}
+      className={`card group space-y-4 ${goal.is_completed ? 'opacity-85' : ''}`}
     >
-      <div className="flex items-start gap-3">
-        {draggable && <GripVertical size={16} className="mt-1 hidden shrink-0 cursor-grab text-text-subtle sm:block" />}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/[0.08]">
-          <Icon size={18} strokeWidth={1.75} />
-        </div>
+      <div className="flex items-center gap-3">
+        {draggable && (
+          <GripVertical size={16} className="-ml-1 hidden shrink-0 cursor-grab text-text-subtle [@media(hover:hover)]:block" />
+        )}
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[13px] text-white" style={{ background: color }}>
+          <Icon size={19} strokeWidth={2.1} />
+        </span>
         <div className="min-w-0 flex-1">
           <Link to="/goals/$goalId" params={{ goalId: goal.id }} className="block">
-            <p className="truncate text-base font-bold hover:text-primary">{goal.name}</p>
+            <p className="truncate text-[16px] font-semibold tracking-[-0.01em] hover:text-primary">{goal.name}</p>
           </Link>
           {goal.is_completed ? (
-            <p className="text-xs font-semibold text-primary">Completed 🎉</p>
+            <p className="text-[13px] font-semibold text-primary">Completed</p>
           ) : goal.is_paused ? (
-            <p className="text-xs text-text-muted">{resumeLabel ? `Paused · resumes ${resumeLabel}` : 'Paused'}</p>
+            <p className="text-[13px] text-muted-foreground">{resumeLabel ? `Paused · resumes ${resumeLabel}` : 'Paused'}</p>
           ) : (
-            <p className={`text-xs ${overdue ? 'text-caution' : 'text-text-muted'}`}>
+            <p className={`text-[13px] ${overdue ? 'font-semibold text-caution' : 'text-muted-foreground'}`}>
               {deadlineLabel(goal.target_date)}
-              {isAuto && ' · Auto'}
+              {isAuto && ' · Auto-funded'}
             </p>
           )}
         </div>
-        <div className="flex shrink-0 items-center">
-          {onMoveUp && (
-            <button
-              type="button"
-              onClick={onMoveUp}
-              aria-label={`Move ${goal.name} up`}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
-            >
-              <ArrowUp size={14} strokeWidth={1.75} />
-            </button>
-          )}
-          {onMoveDown && (
-            <button
-              type="button"
-              onClick={onMoveDown}
-              aria-label={`Move ${goal.name} down`}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
-            >
-              <ArrowDown size={14} strokeWidth={1.75} />
-            </button>
-          )}
-          {!goal.is_completed && (
-            <button
-              type="button"
-              onClick={onTogglePause}
-              aria-label={goal.is_paused ? `Resume ${goal.name}` : `Pause ${goal.name}`}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
-            >
-              {goal.is_paused ? <Play size={14} strokeWidth={1.75} /> : <Pause size={14} strokeWidth={1.75} />}
-            </button>
-          )}
-        </div>
+        <span className="tnum text-[22px] font-bold tracking-[-0.03em]" style={{ color: goal.is_completed ? 'var(--accent)' : undefined }}>
+          {pct}%
+        </span>
       </div>
 
-      <div className="space-y-1.5">
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-primary transition-[width]"
-            style={{ width: `${Math.min(100, progress * 100)}%` }}
-          />
+      <div className="space-y-2">
+        <div className="h-2.5 overflow-hidden rounded-full bg-fill">
+          <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: color }} />
         </div>
-        <div className="flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center justify-between gap-3 text-[13px]">
           <span className="tnum font-semibold">
             {formatCurrency(goal.current_amount)}{' '}
-            <span className="font-normal text-text-muted">/ {formatCurrency(goal.target_amount)}</span>
+            <span className="font-medium text-muted-foreground">of {formatCurrency(goal.target_amount)}</span>
           </span>
           {!goal.is_completed && !goal.is_paused && monthly > 0 && (
-            <span className="text-text-muted">{formatCurrency(monthly)}/mo needed</span>
+            <span className="tnum text-muted-foreground">{formatCurrency(monthly)} / month</span>
           )}
         </div>
       </div>
 
       {isAuto && !goal.is_completed && !goal.is_paused && autoShare !== undefined && (
-        <div className="flex items-center justify-between gap-3 rounded-[10px] bg-white/[0.04] px-3 py-2 text-xs">
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Sparkles size={13} strokeWidth={1.75} className="text-primary" />
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px]">
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Sparkles size={14} strokeWidth={2} className="text-primary" />
             {autoApplied > 0
               ? `${formatCurrency(autoApplied)} added this month`
               : autoShare > 0
@@ -140,11 +115,46 @@ export function GoalCard({
                 : 'No spare loot to share this month'}
           </span>
           {canApply && autoApplied === 0 && autoShare > 0 && (
-            <button type="button" onClick={onApply} disabled={isApplying} className="btn btn-ghost !h-7 !px-3 text-xs">
+            <button type="button" onClick={onApply} disabled={isApplying} className="btn btn-accent !min-h-8 !px-3.5 !text-[13px]">
               {isApplying && <Loader2 size={12} className="animate-spin" />}
               Apply
             </button>
           )}
+        </div>
+      )}
+
+      {(onMoveUp || onMoveDown || !goal.is_completed) && (
+        <div className="-mb-2 flex items-center justify-between border-t border-hairline pt-2">
+          <Link
+            to="/goals/$goalId"
+            params={{ goalId: goal.id }}
+            className="text-[13px] font-semibold text-primary"
+          >
+            Details &amp; contributions
+          </Link>
+          <div className="flex items-center">
+            {onMoveUp && (
+              <button type="button" onClick={onMoveUp} aria-label={`Move ${goal.name} up`} className={iconBtn}>
+                <ArrowUp size={15} strokeWidth={2} />
+              </button>
+            )}
+            {onMoveDown && (
+              <button type="button" onClick={onMoveDown} aria-label={`Move ${goal.name} down`} className={iconBtn}>
+                <ArrowDown size={15} strokeWidth={2} />
+              </button>
+            )}
+            {!goal.is_completed && (
+              <button
+                type="button"
+                onClick={onTogglePause}
+                aria-label={goal.is_paused ? `Resume ${goal.name}` : `Pause ${goal.name}`}
+                title={goal.is_paused ? 'Resume' : 'Pause'}
+                className={iconBtn}
+              >
+                {goal.is_paused ? <Play size={15} strokeWidth={2} /> : <Pause size={15} strokeWidth={2} />}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

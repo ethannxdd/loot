@@ -1,4 +1,4 @@
-import { Calculator, Plus, Wallet, X } from 'lucide-react'
+import { Calculator, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { DebtForm } from '@/components/planner/DebtForm'
@@ -7,6 +7,8 @@ import { DebtStrategyComparison } from '@/components/planner/DebtStrategyCompari
 import { PlanCard } from '@/components/planner/PlanCard'
 import { PlanEditor } from '@/components/planner/PlanEditor'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { InlineSheet } from '@/components/ui/InlineSheet'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useCreateDebt, useDebts, useDeleteDebt, useUpdateDebt } from '@/hooks/useDebts'
 import {
   useCreatePlannerPlan,
@@ -58,37 +60,25 @@ export function PlannerPage() {
 
   return (
     <div className="animate-enter space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[32px] font-bold tracking-[-0.025em]">Salary Planner</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Model salary scenarios and plan your way out of debt.
-          </p>
-        </div>
-        <button type="button" onClick={() => setPlanModal('new')} className="btn btn-primary">
-          <Plus size={16} strokeWidth={2} /> New plan
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Planning"
+        title="Salary planner"
+        subtitle="Model salary scenarios and plan your way out of debt."
+        actions={
+          <button type="button" onClick={() => setPlanModal('new')} className="btn btn-primary" data-tutorial="planner-new">
+            <Plus size={16} strokeWidth={2.4} /> New plan
+          </button>
+        }
+      />
 
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Calculator size={18} strokeWidth={1.75} className="text-secondary" />
-          <h2 className="text-lg font-bold">Salary plans</h2>
+        <div className="px-1">
+          <h2 className="text-[22px] font-bold tracking-[-0.02em]">Salary plans</h2>
+          <p className="text-[13.5px] text-muted-foreground">What each scenario leaves you with every month, after tax and costs.</p>
         </div>
 
         {planModal && (
-          <section ref={planFormRef} className="card-elevated animate-enter space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold">{planModal === 'new' ? 'New plan' : 'Edit plan'}</h3>
-              <button
-                type="button"
-                onClick={() => setPlanModal(null)}
-                aria-label="Close"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
-              >
-                <X size={16} strokeWidth={1.75} />
-              </button>
-            </div>
+          <InlineSheet ref={planFormRef} title={planModal === 'new' ? 'New plan' : `Edit ${planModal.name}`} onClose={() => setPlanModal(null)} narrow={false}>
             <PlanEditor
               key={planModal === 'new' ? 'new' : planModal.id}
               initial={planModal === 'new' ? undefined : planModal}
@@ -115,28 +105,28 @@ export function PlannerPage() {
                 }
               }}
             />
-          </section>
+          </InlineSheet>
         )}
 
         {plansLoading ? (
           <div className="skeleton h-40 rounded-2xl" />
         ) : plans.length === 0 ? (
-          <div className="card-elevated flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
-              <Calculator size={26} strokeWidth={1.75} />
+          <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
+            <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/12 text-primary">
+              <Calculator size={28} strokeWidth={1.8} />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-bold">No plans yet.</h3>
-              <p className="max-w-sm text-sm text-muted-foreground">
+            <div className="space-y-1.5">
+              <h3 className="text-[20px] font-bold tracking-[-0.02em]">No plans yet</h3>
+              <p className="max-w-sm text-[14px] text-muted-foreground">
                 Model a new job offer, a raise, or a career change — phase by phase.
               </p>
             </div>
             <button type="button" onClick={() => setPlanModal('new')} className="btn btn-primary">
-              Create a plan
+              <Plus size={16} strokeWidth={2.4} /> Create a plan
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {plans.map((plan) => (
               <PlanCard
                 key={plan.id}
@@ -150,48 +140,37 @@ export function PlannerPage() {
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Wallet size={18} strokeWidth={1.75} className="text-secondary" />
-          <h2 className="text-lg font-bold">Debt payoff planner</h2>
+        <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+          <div>
+            <h2 className="text-[22px] font-bold tracking-[-0.02em]">Debt payoff</h2>
+            <p className="text-[13.5px] text-muted-foreground">Compare avalanche and snowball, and see when you&apos;ll be debt-free.</p>
+          </div>
+          <button type="button" onClick={() => setDebtModal('new')} className="btn btn-secondary">
+            <Plus size={16} strokeWidth={2.4} /> Add debt
+          </button>
         </div>
 
-        <div className="card space-y-2">
+        <div className="card !px-4 !py-2">
           {debtsLoading ? (
-            <div className="skeleton h-24 rounded-xl" />
+            <div className="skeleton my-2 h-24 rounded-xl" />
           ) : debts.length === 0 ? (
-            <p className="py-4 text-center text-sm text-text-muted">No debts added yet.</p>
+            <p className="py-5 text-center text-[14px] text-muted-foreground">No debts added yet.</p>
           ) : (
-            debts.map((debt) => (
+            <div className="divide-y divide-hairline">
+            {debts.map((debt) => (
               <DebtRow
                 key={debt.id}
                 debt={debt}
                 onEdit={() => setDebtModal(debt)}
                 onDelete={() => setDebtToDelete(debt)}
               />
-            ))
+            ))}
+            </div>
           )}
-          <button
-            type="button"
-            onClick={() => setDebtModal('new')}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary"
-          >
-            <Plus size={14} strokeWidth={2} /> Add debt
-          </button>
         </div>
 
         {debtModal && (
-          <section ref={debtFormRef} className="card-elevated animate-enter space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold">{debtModal === 'new' ? 'Add debt' : 'Edit debt'}</h3>
-              <button
-                type="button"
-                onClick={() => setDebtModal(null)}
-                aria-label="Close"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
-              >
-                <X size={16} strokeWidth={1.75} />
-              </button>
-            </div>
+          <InlineSheet ref={debtFormRef} title={debtModal === 'new' ? 'Add debt' : `Edit ${debtModal.name}`} onClose={() => setDebtModal(null)}>
             <DebtForm
               key={debtModal === 'new' ? 'new' : debtModal.id}
               initial={debtModal === 'new' ? undefined : debtModal}
@@ -219,7 +198,7 @@ export function PlannerPage() {
                 }
               }}
             />
-          </section>
+          </InlineSheet>
         )}
 
         <DebtStrategyComparison

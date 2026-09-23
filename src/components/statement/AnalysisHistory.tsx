@@ -20,30 +20,33 @@ export function AnalysisHistory({ analyses }: AnalysisHistoryProps) {
   const label = (a: StatementAnalysis) => (a.statement_month ? monthLabel(`${a.statement_month}-01`) : 'Statement')
 
   return (
-    <div className="card space-y-2">
-      <p className="overline-label">Analysis history</p>
+    <div className="card !pb-2">
+      <h3 className="card-title mb-1">Saved analyses</h3>
+      <div className="divide-y divide-hairline">
       {analyses.map((a) => (
-        <div key={a.id} className="flex items-center gap-3 rounded-lg bg-surface-2 px-3.5 py-2.5 text-sm">
+        <div key={a.id} className="flex items-center gap-3 py-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-fill text-[10px] font-bold uppercase text-muted-foreground">
+            {a.bank === 'fnb' ? 'FNB' : 'CAP'}
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold">
-              {label(a)} <span className="ml-1 text-xs font-normal uppercase text-text-muted">{a.bank}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">Saved {new Date(a.created_at).toLocaleDateString('en-ZA')}</p>
+            <p className="text-[15px] font-semibold">{label(a)}</p>
+            <p className="text-[12.5px] text-muted-foreground">Saved {new Date(a.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
           </div>
           <div className="text-right">
-            <p className="tnum">{formatCurrency(a.total_spent)} spent</p>
-            <p className="tnum text-xs text-muted-foreground">{formatCurrency(a.total_income)} in</p>
+            <p className="tnum text-[15px] font-semibold">{formatCurrency(a.total_spent)} spent</p>
+            <p className="tnum text-[12.5px] text-muted-foreground">{formatCurrency(a.total_income)} in</p>
           </div>
           <button
             type="button"
             onClick={() => setTarget(a)}
             aria-label={`Delete ${label(a)} analysis`}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-text-subtle hover:bg-fill hover:text-alert"
           >
             <Trash2 size={14} strokeWidth={1.75} />
           </button>
         </div>
       ))}
+      </div>
 
       {target && (
         <ConfirmModal

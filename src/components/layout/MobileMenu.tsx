@@ -31,22 +31,22 @@ export function MobileMenu() {
         onClick={() => setOpen(true)}
         aria-label="Open menu"
         aria-expanded={open}
-        className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+        className="icon-btn"
       >
-        <Menu size={20} strokeWidth={1.75} />
+        <Menu size={19} strokeWidth={1.9} />
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-50 bg-black/35 backdrop-blur-sm md:hidden"
           onClick={() => setOpen(false)}
         >
           <nav
             role="dialog"
             aria-modal="true"
             aria-label="Main menu"
-            className="animate-enter absolute inset-y-0 right-0 flex w-[min(88vw,340px)] flex-col border-l border-hairline bg-background"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            className="animate-enter absolute inset-y-0 right-0 flex w-[min(88vw,340px)] flex-col bg-background shadow-2xl"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)', paddingTop: 'env(safe-area-inset-top)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4">
@@ -55,7 +55,7 @@ export function MobileMenu() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close menu"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-fill"
               >
                 <X size={18} strokeWidth={1.75} />
               </button>
@@ -64,7 +64,7 @@ export function MobileMenu() {
             <div className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
               {NAV_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <div className="overline-label mb-1.5 px-3">{group.label}</div>
+                  <div className="mb-1.5 px-3 text-[12px] font-semibold text-text-subtle">{group.label}</div>
                   <div className="space-y-0.5">
                     {group.items.map((item) => {
                       const isActive = isActivePath(pathname, item.to)
@@ -73,10 +73,8 @@ export function MobileMenu() {
                         <Link
                           key={item.to}
                           to={item.to}
-                          className={`flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-medium ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:bg-white/[0.06] hover:text-foreground'
+                          className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium ${
+                            isActive ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-fill'
                           }`}
                         >
                           <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
@@ -96,7 +94,7 @@ export function MobileMenu() {
                   setOpen(false)
                   void signOut()
                 }}
-                className="flex min-h-11 w-full items-center gap-3 rounded-[10px] px-3 text-sm font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+                className="flex min-h-11 w-full items-center gap-3 rounded-[10px] px-3 text-sm font-medium text-muted-foreground hover:bg-fill hover:text-foreground"
               >
                 <LogOut size={18} strokeWidth={1.75} />
                 Sign out

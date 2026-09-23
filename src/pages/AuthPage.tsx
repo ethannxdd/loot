@@ -1,7 +1,9 @@
+import { useSearch } from '@tanstack/react-router'
 import { Loader2, Mail } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
-import { Logo } from '@/components/ui/Logo'
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { AuthShell } from '@/components/auth/AuthShell'
 import { PasswordInput } from '@/components/ui/PasswordInput'
+import { Segmented } from '@/components/ui/Segmented'
 import { useAuth } from '@/hooks/useAuth'
 
 type Mode = 'signin' | 'signup' | 'forgot'
@@ -17,7 +19,8 @@ export function AuthPage() {
   } = useAuth()
 
   const [method, setMethod] = useState<Method>('password')
-  const [mode, setMode] = useState<Mode>('signin')
+  const search = useSearch({ from: '/auth' })
+  const [mode, setMode] = useState<Mode>(search.mode === 'signup' ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -89,191 +92,190 @@ export function AuthPage() {
     }
   }
 
+  const title =
+    method === 'magic'
+      ? 'Sign in with a link'
+      : mode === 'signup'
+        ? 'Create your account'
+        : mode === 'forgot'
+          ? 'Reset your password'
+          : 'Welcome back'
+  const subtitle =
+    method === 'magic'
+      ? 'We’ll email you a link. No password needed.'
+      : mode === 'signup'
+        ? 'Free, and about five minutes to set up.'
+        : mode === 'forgot'
+          ? 'Enter your email and we’ll send you a reset link.'
+          : 'Sign in to see your numbers.'
+
   return (
-    <div className="loot-gradient flex min-h-dvh items-center justify-center p-5">
-      <div className="animate-enter card-elevated w-full max-w-sm bg-background/95 backdrop-blur-xl">
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <Logo size={40} />
+    <AuthShell title={title} subtitle={subtitle}>
+      <div className="mb-6">
+        <Segmented
+          full
+          label="Sign-in method"
+          value={method}
+          onChange={(next) => {
+            setMethod(next)
+            setError(null)
+            setMagicLinkSent(false)
+          }}
+          options={[
+            { value: 'password', label: 'Password' },
+            { value: 'magic', label: 'Email link' },
+          ]}
+        />
+      </div>
+
+      {method === 'password' && (confirmationSent || resetSent) ? (
+        <SentNotice onBack={() => switchMode('signin')}>
+          {confirmationSent ? (
+            <>
+              We sent a confirmation link to <span className="font-semibold text-foreground">{email}</span>. Open it to activate
+              your account, then sign in.
+            </>
+          ) : (
+            <>
+              If <span className="font-semibold text-foreground">{email}</span> has a Loot account, a reset link is on its way.
+            </>
+          )}
+        </SentNotice>
+      ) : method === 'password' ? (
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
-            <h1 className="text-xl font-bold">
-              Know your <span className="text-primary">loot</span>
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Know your number before you spend it.
-            </p>
+            <label className="field-label" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
           </div>
-        </div>
-
-        <div className="mb-5 flex rounded-[10px] border border-border bg-input p-1">
-          <button
-            type="button"
-            onClick={() => {
-              setMethod('password')
-              setError(null)
-              setMagicLinkSent(false)
-            }}
-            className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
-              method === 'password' ? 'bg-surface-3 text-foreground' : 'text-text-muted'
-            }`}
-          >
-            Password
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMethod('magic')
-              setError(null)
-              setMagicLinkSent(false)
-            }}
-            className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
-              method === 'magic' ? 'bg-surface-3 text-foreground' : 'text-text-muted'
-            }`}
-          >
-            Magic link
-          </button>
-        </div>
-
-        {method === 'password' && (confirmationSent || resetSent) ? (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <Mail size={28} strokeWidth={1.75} className="text-primary" />
-            <p className="text-sm">
-              {confirmationSent ? (
-                <>
-                  Almost there — we sent a confirmation link to{' '}
-                  <span className="font-semibold">{email}</span>. Open it to activate your account,
-                  then sign in.
-                </>
-              ) : (
-                <>
-                  If <span className="font-semibold">{email}</span> has a Loot account, a password
-                  reset link is on its way.
-                </>
-              )}
-            </p>
-            <button
-              type="button"
-              onClick={() => switchMode('signin')}
-              className="text-xs font-semibold text-primary"
-            >
-              Back to sign in
-            </button>
-          </div>
-        ) : method === 'password' ? (
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          {mode !== 'forgot' && (
             <div>
-              <label className="field-label" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-            </div>
-            {mode !== 'forgot' && (
-              <div>
-                <div className="flex items-baseline justify-between">
-                  <label className="field-label" htmlFor="password">
-                    Password
-                  </label>
-                  {mode === 'signin' && (
-                    <button
-                      type="button"
-                      onClick={() => switchMode('forgot')}
-                      className="text-[11px] font-semibold text-primary"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
-                </div>
-                <PasswordInput
-                  id="password"
-                  required
-                  minLength={6}
-                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-                {mode === 'signup' && (
-                  <p className="mt-1 text-[11px] text-text-subtle">At least 6 characters.</p>
+              <div className="flex items-baseline justify-between">
+                <label className="field-label" htmlFor="password">
+                  Password
+                </label>
+                {mode === 'signin' && (
+                  <button type="button" onClick={() => switchMode('forgot')} className="text-[13px] font-semibold text-primary">
+                    Forgot password?
+                  </button>
                 )}
               </div>
-            )}
-            {error && (
-              <p role="alert" className="text-xs text-alert">
-                {error}
-              </p>
-            )}
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
-              {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-              {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
-            </button>
-            <p className="text-center text-xs text-muted-foreground">
-              {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                type="button"
-                onClick={() => switchMode(mode === 'signup' || mode === 'forgot' ? 'signin' : 'signup')}
-                className="font-semibold text-primary"
-              >
-                {mode === 'signin' ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
-          </form>
-        ) : magicLinkSent ? (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <Mail size={28} strokeWidth={1.75} className="text-primary" />
-            <p className="text-sm">
-              Check <span className="font-semibold">{email}</span> for a sign-in link.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
-            <div>
-              <label className="field-label" htmlFor="magic-email">
-                Email
-              </label>
-              <input
-                id="magic-email"
-                type="email"
+              <PasswordInput
+                id="password"
                 required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                minLength={6}
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
               />
+              {mode === 'signup' && <p className="mt-1.5 text-[13px] text-muted-foreground">At least 6 characters.</p>}
             </div>
-            {error && (
-              <p role="alert" className="text-xs text-alert">
-                {error}
-              </p>
-            )}
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full">
-              {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-              Send magic link
+          )}
+          {error && (
+            <p role="alert" className="text-[13px] font-medium text-alert">
+              {error}
+            </p>
+          )}
+          <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full !min-h-12 !text-[16px]">
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+          </button>
+          <p className="text-center text-[14px] text-muted-foreground">
+            {mode === 'signin' ? 'New to Loot? ' : mode === 'signup' ? 'Already have an account? ' : 'Remembered it? '}
+            <button
+              type="button"
+              onClick={() => switchMode(mode === 'signup' || mode === 'forgot' ? 'signin' : 'signup')}
+              className="font-semibold text-primary"
+            >
+              {mode === 'signin' ? 'Create an account' : 'Sign in'}
             </button>
-          </form>
-        )}
-
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-hairline" />
-          <span className="text-[11px] text-text-subtle">or</span>
-          <div className="h-px flex-1 bg-hairline" />
-        </div>
-
-        <button type="button" onClick={handleGoogle} className="btn btn-ghost w-full">
-          Continue with Google
-        </button>
-        {error && (magicLinkSent || confirmationSent || resetSent) && (
-          <p role="alert" className="mt-3 text-center text-xs text-alert">
-            {error}
           </p>
-        )}
+        </form>
+      ) : magicLinkSent ? (
+        <SentNotice onBack={() => setMagicLinkSent(false)} backLabel="Use a different email">
+          Check <span className="font-semibold text-foreground">{email}</span> for your sign-in link.
+        </SentNotice>
+      ) : (
+        <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
+          <div>
+            <label className="field-label" htmlFor="magic-email">
+              Email
+            </label>
+            <input
+              id="magic-email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-[13px] font-medium text-alert">
+              {error}
+            </p>
+          )}
+          <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full !min-h-12 !text-[16px]">
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            Email me a link
+          </button>
+        </form>
+      )}
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-hairline" />
+        <span className="text-[13px] text-text-subtle">or</span>
+        <div className="h-px flex-1 bg-hairline" />
       </div>
+
+      <button type="button" onClick={handleGoogle} className="btn btn-secondary w-full !min-h-12 !text-[16px]">
+        <GoogleMark />
+        Continue with Google
+      </button>
+      {error && (magicLinkSent || confirmationSent || resetSent) && (
+        <p role="alert" className="mt-3 text-center text-[13px] font-medium text-alert">
+          {error}
+        </p>
+      )}
+      <p className="mt-8 text-center text-[12.5px] leading-relaxed text-text-subtle">
+        Loot gives estimates and guidance, not financial advice.
+      </p>
+    </AuthShell>
+  )
+}
+
+function SentNotice({ children, onBack, backLabel = 'Back to sign in' }: { children: ReactNode; onBack: () => void; backLabel?: string }) {
+  return (
+    <div className="card flex flex-col items-center gap-3 px-6 py-8 text-center">
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-primary/12 text-primary">
+        <Mail size={26} strokeWidth={2} />
+      </span>
+      <p className="text-[15px] leading-relaxed text-muted-foreground">{children}</p>
+      <button type="button" onClick={onBack} className="mt-1 text-[14px] font-semibold text-primary">
+        {backLabel}
+      </button>
     </div>
+  )
+}
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
   )
 }

@@ -1,9 +1,12 @@
-import { Pencil, Plus, Scale, Trash2, X } from 'lucide-react'
+import { Pencil, Plus, Scale, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { NetWorthItemForm } from '@/components/networth/NetWorthItemForm'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { InlineSheet } from '@/components/ui/InlineSheet'
+import { StatStrip } from '@/components/ui/StatStrip'
+import { chartAxisTick, chartTooltipStyle } from '@/lib/chart'
 import {
   useCreateNetWorthItem,
   useDeleteNetWorthItem,
@@ -22,7 +25,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const deleteItem = useDeleteNetWorthItem()
   const [modal, setModal] = useState<'new' | NetWorthItem | null>(null)
   const [toDelete, setToDelete] = useState<NetWorthItem | null>(null)
-  const formRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (modal) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -40,103 +43,50 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="card">
-          <p className="overline-label">Assets</p>
-          <p className="tnum text-lg text-primary">{formatCurrency(totals.assetsTotal)}</p>
-        </div>
-        <div className="card">
-          <p className="overline-label">Liabilities</p>
-          <p className="tnum text-lg text-alert">{formatCurrency(totals.liabilitiesTotal)}</p>
-        </div>
-        <div className="card">
-          <p className="overline-label">Net worth</p>
-          <p className={`tnum text-lg ${totals.netWorth < 0 ? 'text-alert' : ''}`}>{formatCurrency(totals.netWorth)}</p>
-        </div>
-      </div>
+      <StatStrip
+        items={[
+          { label: 'Own', color: 'var(--chart-1)', value: formatCurrency(totals.assetsTotal), sub: `${assets.length} asset${assets.length === 1 ? '' : 's'}` },
+          { label: 'Owe', color: 'var(--chart-5)', value: formatCurrency(totals.liabilitiesTotal), sub: `${liabilities.length} debt${liabilities.length === 1 ? '' : 's'}` },
+          {
+            label: 'Net worth',
+            value: formatCurrency(totals.netWorth),
+            valueColor: totals.netWorth < 0 ? 'var(--alert)' : 'var(--accent)',
+            sub: 'What you own minus what you owe',
+          },
+        ]}
+      />
 
       {chartData.length < 2 && items.length > 0 && (
-        <p className="px-1 text-xs text-text-muted">
-          Your net worth is saved with each month's snapshot — the trend chart appears once two months have data.
+        <p className="px-1 text-[13px] text-muted-foreground">
+          Your net worth is saved with each month&apos;s snapshot — the trend chart appears once two months have data.
         </p>
       )}
 
       {chartData.length >= 2 && (
-        <div className="card">
-          <p className="overline-label mb-3">Net worth over time</p>
+        <div className="card sm:p-6">
+          <h3 className="card-title mb-4">Net worth over time</h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} axisLine={false} tickLine={false} width={0} />
-                <Tooltip
-                  formatter={(value) => formatCurrency(Number(value) || 0)}
-                  contentStyle={{ background: '#211B1B', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, fontSize: 12 }}
-                />
-                <Line type="monotone" dataKey="netWorth" stroke="#C1FE72" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                <defs>
+                  <linearGradient id="nwFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="2 4" stroke="var(--hairline)" vertical={false} />
+                <XAxis dataKey="month" tick={chartAxisTick} axisLine={false} tickLine={false} />
+                <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={0} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} contentStyle={chartTooltipStyle} />
+                <Area type="monotone" dataKey="netWorth" name="Net worth" stroke="var(--accent)" strokeWidth={2.5} fill="url(#nwFill)" dot={{ r: 3 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {(
-          [
-            { title: 'Assets', list: assets },
-            { title: 'Liabilities', list: liabilities },
-          ] as const
-        ).map(({ title, list }) => (
-          <div key={title} className="card space-y-2">
-            <p className="overline-label">{title}</p>
-            {list.length === 0 && <p className="py-4 text-center text-xs text-text-muted">Nothing added yet.</p>}
-            {list.map((item) => (
-              <div key={item.id} className="group flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{NET_WORTH_CATEGORY_LABELS[item.category]}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="tnum text-sm">{formatCurrency(item.value)}</span>
-                  <div className="flex transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
-                    <button type="button" onClick={() => setModal(item)} aria-label={`Edit ${item.label}`} className="flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-foreground">
-                      <Pencil size={13} strokeWidth={1.75} />
-                    </button>
-                    <button type="button" onClick={() => setToDelete(item)} aria-label={`Delete ${item.label}`} className="flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert">
-                      <Trash2 size={13} strokeWidth={1.75} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {modal === null && (
-        <button
-          type="button"
-          onClick={() => setModal('new')}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary"
-        >
-          <Plus size={14} strokeWidth={2} /> Add asset or liability
-        </button>
-      )}
-
       {modal && (
-        <div ref={formRef} className="card-elevated animate-enter space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold">{modal === 'new' ? 'Add item' : 'Edit item'}</h3>
-            <button
-              type="button"
-              onClick={() => setModal(null)}
-              aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
-            >
-              <X size={16} strokeWidth={1.75} />
-            </button>
-          </div>
+        <InlineSheet ref={formRef} title={modal === 'new' ? 'Add to net worth' : `Edit ${modal.label}`} onClose={() => setModal(null)}>
           <NetWorthItemForm
             key={modal === 'new' ? 'new' : modal.id}
             initial={modal === 'new' ? undefined : modal}
@@ -163,16 +113,73 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
               }
             }}
           />
+        </InlineSheet>
+      )}
+
+      {items.length === 0 && !isLoading && !modal ? (
+        <div className="card-elevated flex flex-col items-center gap-4 py-12 text-center">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-primary/12 text-primary">
+            <Scale size={28} strokeWidth={1.8} />
+          </span>
+          <p className="max-w-sm text-[14px] text-muted-foreground">
+            Add what you own and owe to start tracking your net worth over time.
+          </p>
+          <button type="button" onClick={() => setModal('new')} className="btn btn-primary">
+            <Plus size={16} strokeWidth={2.4} /> Add asset or debt
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {(
+            [
+              { title: 'What you own', list: assets, color: 'var(--chart-1)' },
+              { title: 'What you owe', list: liabilities, color: 'var(--chart-5)' },
+            ] as const
+          ).map(({ title, list, color }) => (
+            <section key={title}>
+              <div className="mb-2 flex items-baseline justify-between px-1">
+                <h3 className="card-title">{title}</h3>
+                <span className="tnum text-[13px] font-semibold text-muted-foreground">
+                  {formatCurrency(list.reduce((s, i) => s + i.value, 0))}
+                </span>
+              </div>
+              <div className="card !px-4 !py-2">
+                {list.length === 0 && <p className="py-4 text-center text-[13px] text-muted-foreground">Nothing added yet.</p>}
+                <div className="divide-y divide-hairline">
+                  {list.map((item) => (
+                    <div key={item.id} className="group flex items-center gap-3 py-3">
+                      <span
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] text-[13px] font-bold text-white"
+                        style={{ background: color }}
+                      >
+                        {item.label.slice(0, 1).toUpperCase()}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] font-semibold">{item.label}</p>
+                        <p className="text-[12.5px] text-muted-foreground">{NET_WORTH_CATEGORY_LABELS[item.category]}</p>
+                      </div>
+                      <span className="tnum text-[15px] font-semibold">{formatCurrency(item.value)}</span>
+                      <div className="flex transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                        <button type="button" onClick={() => setModal(item)} aria-label={`Edit ${item.label}`} className="grid h-9 w-9 place-items-center rounded-full text-text-subtle hover:bg-fill hover:text-foreground">
+                          <Pencil size={14} strokeWidth={1.9} />
+                        </button>
+                        <button type="button" onClick={() => setToDelete(item)} aria-label={`Delete ${item.label}`} className="grid h-9 w-9 place-items-center rounded-full text-text-subtle hover:bg-fill hover:text-alert">
+                          <Trash2 size={14} strokeWidth={1.9} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
-      {items.length === 0 && !isLoading && !modal && (
-        <div className="card-elevated flex flex-col items-center gap-3 py-10 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
-            <Scale size={24} strokeWidth={1.75} />
-          </div>
-          <p className="text-sm text-muted-foreground">Add what you own and owe to start tracking your net worth over time.</p>
-        </div>
+      {modal === null && items.length > 0 && (
+        <button type="button" onClick={() => setModal('new')} className="btn btn-secondary">
+          <Plus size={16} strokeWidth={2.4} /> Add asset or debt
+        </button>
       )}
 
       {toDelete && (

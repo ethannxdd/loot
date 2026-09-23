@@ -28,7 +28,7 @@ export function ConfirmModal({
   return (
     <Modal title={title} onClose={onCancel}>
       <div className="space-y-5">
-        <div className="text-sm text-muted-foreground">{children}</div>
+        <div className="text-[15px] leading-relaxed text-muted-foreground">{children}</div>
         <div className="flex gap-3">
           <button type="button" onClick={onCancel} className="btn btn-ghost flex-1">
             {cancelLabel}

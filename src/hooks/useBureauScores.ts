@@ -28,8 +28,10 @@ export function useBureauScores() {
 
 interface AddBureauScoreArgs {
   input: NewBureauScore
-  /** The Loot Score estimate at the time of upload, used to compute the calibration gap. */
-  estimatedScore: number | null
+  /** Top of the bureau's scale (999 TransUnion, 740 Experian/ClearScore…) — kept in `factors.scale_max`. */
+  scaleMax: number
+  /** The internal habits index (0–999) at upload; later estimates drift from the score by how habits move. */
+  currentIndex: number | null
   factors: ScoreFactors | null
 }
 
@@ -42,30 +44,32 @@ export function useAddBureauScore() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ input, estimatedScore, factors }: AddBureauScoreArgs) => {
+    mutationFn: async ({ input, scaleMax, currentIndex, factors }: AddBureauScoreArgs) => {
       if (!user) throw new Error('Not signed in')
-      const gap = estimatedScore !== null ? input.score - estimatedScore : null
+      // For calibration research only: the habits index projected onto this bureau's scale.
+      const projected = currentIndex !== null ? Math.round((currentIndex / 999) * scaleMax) : null
+      const gap = projected !== null ? input.score - projected : null
 
       const { data, error } = await supabase
         .from('bureau_scores')
         .insert({
           ...input,
           user_id: user.id,
-          estimated_score: estimatedScore,
+          estimated_score: currentIndex,
           gap,
-          factors: factors ?? {},
+          factors: { ...(factors ?? {}), scale_max: scaleMax },
         })
         .select()
         .single()
       if (error) throw error
 
-      if (estimatedScore !== null && factors) {
+      if (projected !== null && factors) {
         await supabase.from('score_calibration').insert({
           user_id: user.id,
           bureau: input.bureau,
           real_score: input.score,
-          estimated_score: estimatedScore,
-          gap: input.score - estimatedScore,
+          estimated_score: projected,
+          gap: input.score - projected,
           dti: factors.dti,
           savings_rate: factors.savings_rate,
           payment_consistency: factors.payment_consistency,

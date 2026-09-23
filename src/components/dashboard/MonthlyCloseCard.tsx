@@ -1,10 +1,10 @@
-import { CalendarCheck, ChevronLeft, ChevronRight, Download, Lock, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Lock, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useCurrentMonthSnapshot, useLockCurrentMonth } from '@/hooks/useMonthlyClose'
 import { useProfile } from '@/hooks/useProfile'
 import { useExpenses } from '@/hooks/useExpenses'
-import { categoryLabel } from '@/lib/categories'
-import { exportElementAsPdf } from '@/lib/export'
+import { MonthlyCloseExportDoc } from '@/components/export/ExportDocs'
+import { exportDocument } from '@/lib/export'
 import { monthLabel, monthlyEquivalent } from '@/lib/money'
 import { formatCurrency } from '@/lib/utils'
 
@@ -18,7 +18,6 @@ export function MonthlyCloseCard() {
   const [wizardOpen, setWizardOpen] = useState(false)
   const [step, setStep] = useState(0)
   const [notes, setNotes] = useState('')
-  const summaryRef = useRef<HTMLDivElement>(null)
   const wizardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,21 +38,42 @@ export function MonthlyCloseCard() {
   }
 
   async function handleExport() {
-    if (!summaryRef.current) return
-    await exportElementAsPdf(summaryRef.current, `loot-monthly-close-${currentSnapshot?.month ?? 'summary'}`)
+    if (!currentSnapshot) return
+    await exportDocument(<MonthlyCloseExportDoc snapshot={currentSnapshot} />, `loot-monthly-close-${currentSnapshot.month}`, 'pdf')
   }
+
+  const monthName = new Date().toLocaleDateString('en-ZA', { month: 'long' })
+  const now = new Date()
+  const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1
 
   return (
     <div className="card space-y-4">
-      <div className="overline-label flex items-center gap-1.5">
-        <CalendarCheck size={13} strokeWidth={2} /> Monthly close
-      </div>
+      {!wizardOpen && !isLocked && (
+        <button type="button" onClick={openWizard} className="flex w-full items-center gap-3.5 text-left">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-fill">
+            <Lock size={17} strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Close {monthName}</span>
+            <span className="block text-[13px] text-muted-foreground">
+              {daysLeft <= 1 ? 'Last day — ready to close' : `${daysLeft} days left in ${monthName}`} · 5
+              quick steps
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-text-subtle" />
+        </button>
+      )}
 
       {isLocked && currentSnapshot ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Lock size={14} strokeWidth={2} />
-            {monthLabel(currentSnapshot.month)} is locked
+          <div className="flex items-center gap-3.5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+              <Lock size={17} strokeWidth={2} />
+            </span>
+            <span>
+              <span className="block text-[15px] font-semibold">{monthLabel(currentSnapshot.month)} is closed</span>
+              <span className="block text-[13px] text-muted-foreground">Numbers are locked in your history</span>
+            </span>
           </div>
           {currentSnapshot.close_notes && (
             <p className="text-xs text-muted-foreground">{currentSnapshot.close_notes}</p>
@@ -66,23 +86,32 @@ export function MonthlyCloseCard() {
       ) : wizardOpen ? (
         <div ref={wizardRef} className="animate-enter space-y-5">
           <div className="flex items-center justify-between">
-            <span className="overline-label">
-              Step {step + 1} of {STEPS.length} · {STEPS[step]}
+            <span className="text-[15px] font-semibold">
+              {STEPS[step]}
+              <span className="ml-2 text-[13px] font-medium text-muted-foreground">
+                Step {step + 1} of {STEPS.length}
+              </span>
             </span>
             <button
               type="button"
               onClick={() => setWizardOpen(false)}
               aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-fill hover:text-foreground"
             >
               <X size={16} strokeWidth={1.75} />
             </button>
           </div>
 
+          <div className="flex gap-1" aria-hidden="true">
+            {STEPS.map((s, i) => (
+              <span key={s} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-primary' : 'bg-fill-2'}`} />
+            ))}
+          </div>
+
           {step === 0 && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">Does this month's income look right?</p>
-              <div className="card-purple space-y-2 p-4">
+              <div className="space-y-2 rounded-xl bg-surface-2 p-4">
                 <div className="flex justify-between text-sm">
                   <span>Gross income</span>
                   <span className="tnum font-semibold">{formatCurrency(profile.gross_income)}</span>
@@ -101,7 +130,7 @@ export function MonthlyCloseCard() {
               <p className="text-sm text-muted-foreground">Confirm your fixed expenses for the month.</p>
               {fixed.length === 0 && <p className="text-xs text-text-muted">No fixed expenses tracked.</p>}
               {fixed.map((e) => (
-                <div key={e.id} className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                <div key={e.id} className="flex justify-between rounded-xl bg-surface-2 px-3.5 py-2.5 text-sm">
                   <span>{e.name}</span>
                   <span className="tnum">{formatCurrency(monthlyEquivalent(e))}</span>
                 </div>
@@ -114,7 +143,7 @@ export function MonthlyCloseCard() {
               <p className="text-sm text-muted-foreground">Review your variable expenses.</p>
               {variable.length === 0 && <p className="text-xs text-text-muted">No variable expenses tracked.</p>}
               {variable.map((e) => (
-                <div key={e.id} className="flex justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                <div key={e.id} className="flex justify-between rounded-xl bg-surface-2 px-3.5 py-2.5 text-sm">
                   <span>{e.name}</span>
                   <span className="tnum">{formatCurrency(monthlyEquivalent(e))}</span>
                 </div>
@@ -143,7 +172,7 @@ export function MonthlyCloseCard() {
                 Locking freezes this month's numbers in your history — they won't change even if you edit expenses
                 later.
               </p>
-              <div className="card-purple space-y-2 p-4 text-sm">
+              <div className="space-y-2 rounded-xl bg-surface-2 p-4 text-sm">
                 <div className="flex justify-between">
                   <span>Disposable income</span>
                   <span className="tnum font-semibold">
@@ -177,61 +206,13 @@ export function MonthlyCloseCard() {
           </div>
         </div>
       ) : (
-        <>
-          <p className="text-xs text-muted-foreground">
-            Confirm this month's numbers and lock them in — a 5-step guided close.
-          </p>
-          <button type="button" onClick={openWizard} className="btn btn-primary w-full">
-            Start monthly close
-          </button>
-        </>
-      )}
-
-      {/* Hidden export target, kept in the DOM so html2canvas can render it even when the card is collapsed. */}
-      {currentSnapshot && (
-        <div className="pointer-events-none fixed -left-[9999px] top-0" aria-hidden="true">
-          <div ref={summaryRef} className="w-[420px] space-y-4 bg-background p-6 text-foreground">
-            <h2 className="text-lg font-bold">Loot — Monthly Summary</h2>
-            <p className="text-sm text-muted-foreground">{monthLabel(currentSnapshot.month)}</p>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt>Net income</dt>
-                <dd className="tnum font-semibold">{formatCurrency(currentSnapshot.net_income)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Total expenses</dt>
-                <dd className="tnum font-semibold">{formatCurrency(currentSnapshot.total_expenses)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Disposable income</dt>
-                <dd className="tnum font-semibold">{formatCurrency(currentSnapshot.disposable_income)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Savings rate</dt>
-                <dd className="tnum font-semibold">{Math.round(currentSnapshot.savings_rate)}%</dd>
-              </div>
-            </dl>
-            {Object.keys(currentSnapshot.expenses_by_category).length > 0 && (
-              <div>
-                <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-text-muted">By category</p>
-                <dl className="space-y-1 text-xs">
-                  {Object.entries(currentSnapshot.expenses_by_category)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([cat, amount]) => (
-                      <div key={cat} className="flex justify-between">
-                        <dt>{categoryLabel(cat)}</dt>
-                        <dd className="tnum">{formatCurrency(amount)}</dd>
-                      </div>
-                    ))}
-                </dl>
-              </div>
-            )}
-            {currentSnapshot.close_notes && (
-              <p className="border-t border-hairline pt-3 text-xs italic text-muted-foreground">{currentSnapshot.close_notes}</p>
-            )}
-          </div>
+        <div className="flex gap-1" aria-hidden="true">
+          {STEPS.map((s) => (
+            <span key={s} className="h-1 flex-1 rounded-full bg-fill-2" />
+          ))}
         </div>
       )}
+
     </div>
   )
 }

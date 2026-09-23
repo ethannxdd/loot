@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ChevronDown, HelpCircle, PlayCircle } from 'lucide-react'
 import { useTutorialContext } from '@/context/TutorialContext'
 import { NAV_GROUPS } from '@/lib/nav'
+import { SettingsHeading } from '@/components/settings/SettingsHeading'
 
 const GUIDE: Record<string, string> = {
   '/dashboard': 'Your monthly position at a glance, plus your Loot Score, forecast, close and briefing.',
@@ -56,35 +57,33 @@ export function HelpSection() {
 
   return (
     <section className="card space-y-5">
-      <div className="overline-label flex items-center gap-1.5">
-        <HelpCircle size={13} strokeWidth={2} /> Help
-      </div>
+      <SettingsHeading icon={HelpCircle} title="Help" color="var(--chart-3)" description="How Loot works, feature by feature." />
 
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold">Guided tour</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Replay the two-minute walkthrough of every page.</p>
+          <p className="text-[15px] font-medium">Guided tour</p>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">Replay the two-minute walkthrough of every page.</p>
         </div>
-        <button type="button" onClick={start} className="btn btn-ghost shrink-0">
-          <PlayCircle size={15} strokeWidth={1.75} />
+        <button type="button" onClick={start} className="btn btn-secondary shrink-0">
+          <PlayCircle size={15} strokeWidth={2} />
           Replay
         </button>
       </div>
 
       <div className="border-t border-hairline pt-4">
-        <p className="overline-label mb-2">Feature guide</p>
-        <ul className="space-y-1">
+        <h3 className="mb-2 text-[15px] font-semibold">Feature guide</h3>
+        <ul className="-mx-2 space-y-0.5">
           {NAV_GROUPS.flatMap((g) => g.items)
             .filter((item) => GUIDE[item.to])
             .map((item) => {
               const Icon = item.icon
               return (
                 <li key={item.to}>
-                  <Link to={item.to} className="flex items-start gap-3 rounded-[10px] px-2 py-2 hover:bg-white/[0.04]">
-                    <Icon size={16} strokeWidth={1.75} className="mt-0.5 shrink-0 text-text-muted" />
-                    <span className="text-sm">
-                      <span className="font-semibold">{item.label}</span>
-                      <span className="block text-xs text-muted-foreground">{GUIDE[item.to]}</span>
+                  <Link to={item.to} className="flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-fill">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-fill-2 text-muted-foreground"><Icon size={15} strokeWidth={2} /></span>
+                    <span className="text-[15px]">
+                      <span className="font-medium">{item.label}</span>
+                      <span className="block text-[13px] text-muted-foreground">{GUIDE[item.to]}</span>
                     </span>
                   </Link>
                 </li>
@@ -94,22 +93,22 @@ export function HelpSection() {
       </div>
 
       <div className="border-t border-hairline pt-4">
-        <p className="overline-label mb-2">Frequently asked</p>
-        <div className="space-y-1">
+        <h3 className="mb-2 text-[15px] font-semibold">Frequently asked</h3>
+        <div className="-mx-2 space-y-0.5">
           {FAQ.map((item) => (
-            <details key={item.q} className="group rounded-[10px] px-2 py-2 hover:bg-white/[0.03]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            <details key={item.q} className="group rounded-xl px-2 py-2.5 transition-colors hover:bg-fill">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-medium [&::-webkit-details-marker]:hidden">
                 {item.q}
-                <ChevronDown size={15} className="shrink-0 text-text-muted transition-transform group-open:rotate-180" />
+                <ChevronDown size={15} className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
               </summary>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.a}</p>
+              <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{item.a}</p>
             </details>
           ))}
         </div>
-        <p className="mt-3 text-xs text-text-muted">
+        <p className="mt-3 text-[13px] text-muted-foreground">
           Tax terms explained in plain English are in the{' '}
           <Link to="/tax" className="font-semibold text-primary">
-            Tax Centre glossary
+            Tax centre glossary
           </Link>
           .
         </p>

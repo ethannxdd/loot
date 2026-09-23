@@ -1,10 +1,12 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronDown, Plus, Search, Users, Wallet, X } from 'lucide-react'
+import { ChevronDown, Plus, Search, Trash2, Users, Wallet, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ExpenseForm } from '@/components/expenses/ExpenseForm'
 import { ExpenseRow } from '@/components/expenses/ExpenseRow'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Segmented } from '@/components/ui/Segmented'
 import {
   useAddExpense,
   useDeleteExpensePermanently,
@@ -15,7 +17,7 @@ import {
 } from '@/hooks/useExpenses'
 import { useHouseholdView } from '@/hooks/useHousehold'
 import { categoryLabel } from '@/lib/categories'
-import { monthlyEquivalent, totalMonthlyExpenses } from '@/lib/money'
+import { monthlyEquivalent } from '@/lib/money'
 import type { Expense, NewExpense } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 
@@ -33,6 +35,7 @@ export function ExpensesPage() {
   const [formState, setFormState] = useState<'add' | { edit: Expense } | null>(null)
   const [binOpen, setBinOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<'all' | 'fixed' | 'variable'>('all')
   const [confirmForever, setConfirmForever] = useState<Expense | null>(null)
   const formRef = useRef<HTMLElement>(null)
 
@@ -69,7 +72,6 @@ export function ExpensesPage() {
 
   const sum = (list: Expense[]) => list.reduce((total, e) => total + monthlyEquivalent(e), 0)
   const totalActive = expenses.filter((e) => !e.deleted_at)
-  const combinedTotal = totalMonthlyExpenses(household.combinedExpenses)
 
   function handleAdd(values: NewExpense) {
     addExpense.mutate(values, {
@@ -115,13 +117,20 @@ export function ExpensesPage() {
   const isEmpty = !isLoading && totalActive.length === 0
   const noMatches = !isEmpty && q && fixed.length + variable.length + householdFixed.length + householdVariable.length === 0
 
+  const fixedList = household.active ? householdFixed.map((r) => r.expense) : fixed
+  const variableList = household.active ? householdVariable.map((r) => r.expense) : variable
+  const allActive = household.active ? household.combinedExpenses : totalActive
+  const fixedTotal = sum(allActive.filter((e) => e.is_fixed))
+  const variableTotal = sum(allActive.filter((e) => !e.is_fixed))
+  const grandTotal = fixedTotal + variableTotal
+
   const renderRows = (
     plain: Expense[],
     shared: typeof householdFixed,
     emptyText: string,
   ) => {
     if (household.active) {
-      if (shared.length === 0) return <p className="px-2 py-3 text-sm text-text-muted">{emptyText}</p>
+      if (shared.length === 0) return <p className="py-3 text-[14px] text-muted-foreground">{emptyText}</p>
       return shared.map(({ expense, ownerLabel, isMine }) => (
         <ExpenseRow
           key={expense.id}
@@ -134,7 +143,7 @@ export function ExpensesPage() {
         />
       ))
     }
-    if (plain.length === 0) return <p className="px-2 py-3 text-sm text-text-muted">{emptyText}</p>
+    if (plain.length === 0) return <p className="py-3 text-[14px] text-muted-foreground">{emptyText}</p>
     return plain.map((expense) => (
       <ExpenseRow
         key={expense.id}
@@ -146,52 +155,71 @@ export function ExpensesPage() {
     ))
   }
 
+  const group = (
+    title: string,
+    hint: string,
+    list: Expense[],
+    plain: Expense[],
+    shared: typeof householdFixed,
+    emptyText: string,
+  ) => (
+    <section className="min-w-0">
+      <div className="mb-2 flex items-baseline justify-between px-1">
+        <h2 className="card-title">
+          {title} <span className="ml-1 text-[13px] font-medium text-muted-foreground">{hint}</span>
+        </h2>
+        <span className="tnum text-[13px] font-semibold text-muted-foreground">{formatCurrency(sum(list))}/mo</span>
+      </div>
+      <div className="card !px-4 !py-2">
+        <div className="divide-y divide-hairline">{renderRows(plain, shared, emptyText)}</div>
+      </div>
+    </section>
+  )
+
   return (
     <div className="animate-enter space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[32px] font-bold tracking-[-0.025em]">Expenses</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Everything you're committed to spending, monthly-equivalent.
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {household.available && (
-            <button
-              type="button"
-              onClick={household.toggle}
-              disabled={household.isToggling}
-              aria-pressed={household.active}
-              className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
-                household.active
-                  ? 'border-primary/40 bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Users size={14} strokeWidth={1.75} />
-              Household view
+      <PageHeader
+        eyebrow="Money"
+        title="Expenses"
+        subtitle="Everything you're committed to spending each month."
+        actions={
+          <>
+            {household.available && (
+              <button
+                type="button"
+                onClick={household.toggle}
+                disabled={household.isToggling}
+                aria-pressed={household.active}
+                className={`btn !min-h-[38px] !px-3.5 !text-[13px] ${household.active ? 'btn-accent' : 'btn-secondary'}`}
+              >
+                <Users size={15} strokeWidth={2} />
+                Household
+              </button>
+            )}
+            <button type="button" onClick={() => setFormState('add')} className="btn btn-primary" data-tutorial="expenses-add">
+              <Plus size={16} strokeWidth={2.4} />
+              Add expense
             </button>
-          )}
-          <button type="button" onClick={() => setFormState('add')} className="btn btn-primary">
-            <Plus size={16} strokeWidth={2} />
-            Add expense
-          </button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {formState && (
-        <section ref={formRef} className="card-elevated animate-enter space-y-4">
+        <section ref={formRef} className="card-elevated animate-enter scroll-mt-6 space-y-5 sm:p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">{formState === 'add' ? 'Add expense' : 'Edit expense'}</h2>
+            <h2 className="text-[20px] font-bold tracking-[-0.02em]">
+              {formState === 'add' ? 'New expense' : 'Edit expense'}
+            </h2>
             <button
               type="button"
               onClick={() => setFormState(null)}
               aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              className="grid h-9 w-9 place-items-center rounded-full bg-fill text-muted-foreground hover:text-foreground"
             >
-              <X size={16} strokeWidth={1.75} />
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
+          <div className="max-w-2xl">
           {formState === 'add' ? (
             <ExpenseForm key="add" onSubmit={handleAdd} onCancel={() => setFormState(null)} isSubmitting={addExpense.isPending} submitLabel="Add expense" />
           ) : (
@@ -200,83 +228,112 @@ export function ExpensesPage() {
               initial={formState.edit}
               onSubmit={(values) => handleUpdate(formState.edit.id, values)}
               onCancel={() => setFormState(null)}
+              onDelete={() => {
+                handleRemove(formState.edit)
+                setFormState(null)
+              }}
               isSubmitting={updateExpense.isPending}
               submitLabel="Save changes"
             />
           )}
+          </div>
         </section>
-      )}
-
-      {household.active && (
-        <div className="card-purple flex items-center justify-between px-5 py-4">
-          <p className="text-sm font-semibold">
-            Combined household expenses{household.partnerNames.length > 0 && ` · you + ${household.partnerNames.join(', ')}`}
-          </p>
-          <p className="tnum text-lg font-bold">{formatCurrency(combinedTotal)}/mo</p>
-        </div>
       )}
 
       {isEmpty ? (
         <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
-            <Wallet size={32} strokeWidth={1.75} />
+          <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/12 text-primary">
+            <Wallet size={30} strokeWidth={1.8} />
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-lg font-bold">Nothing tracked yet.</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em]">Nothing tracked yet</h2>
+            <p className="max-w-sm text-[14px] text-muted-foreground">
               Add your recurring costs and Loot will show your real monthly position.
             </p>
           </div>
           <button type="button" onClick={() => setFormState('add')} className="btn btn-primary">
-            Add expense
+            <Plus size={16} strokeWidth={2.4} /> Add your first expense
           </button>
         </div>
       ) : (
         <>
-          <div className="relative max-w-sm">
-            <Search
-              size={15}
-              strokeWidth={1.75}
-              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-text-muted"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search expenses"
-              aria-label="Search expenses"
-              className="!pl-9"
+          <section className="card-elevated grid gap-5 sm:grid-cols-[1.2fr_2fr] sm:items-center sm:p-6">
+            <div>
+              <p className="text-[13px] font-medium text-muted-foreground">
+                {household.active
+                  ? `Household total${household.partnerNames.length > 0 ? ` · you + ${household.partnerNames.join(', ')}` : ''}`
+                  : 'Monthly total'}
+              </p>
+              <p className="tnum mt-1 text-[40px] font-bold leading-none tracking-[-0.04em]">{formatCurrency(grandTotal)}</p>
+              <p className="mt-2 text-[13px] text-muted-foreground">
+                {allActive.length} expense{allActive.length === 1 ? '' : 's'}, monthly-equivalent
+              </p>
+            </div>
+            <div>
+              <div className="flex h-3 gap-[3px] overflow-hidden rounded-full">
+                {fixedTotal > 0 && (
+                  <span className="rounded-l-full" style={{ width: `${(fixedTotal / (grandTotal || 1)) * 100}%`, background: 'var(--chart-2)' }} />
+                )}
+                {variableTotal > 0 && (
+                  <span className="rounded-r-full" style={{ width: `${(variableTotal / (grandTotal || 1)) * 100}%`, background: 'var(--chart-4)' }} />
+                )}
+              </div>
+              <div className="mt-3 flex gap-8">
+                <div className="text-[12.5px] text-muted-foreground">
+                  <span className="mr-1.5 inline-block h-2 w-2 rounded-[3px] align-[1px]" style={{ background: 'var(--chart-2)' }} />
+                  Fixed
+                  <b className="tnum mt-0.5 block text-[15px] font-semibold text-foreground">{formatCurrency(fixedTotal)}</b>
+                </div>
+                <div className="text-[12.5px] text-muted-foreground">
+                  <span className="mr-1.5 inline-block h-2 w-2 rounded-[3px] align-[1px]" style={{ background: 'var(--chart-4)' }} />
+                  Variable
+                  <b className="tnum mt-0.5 block text-[15px] font-semibold text-foreground">{formatCurrency(variableTotal)}</b>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+              <Search
+                size={16}
+                strokeWidth={2}
+                className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-text-subtle"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search expenses"
+                aria-label="Search expenses"
+                className="!bg-surface !pl-10 shadow-[var(--shadow-card)]"
+              />
+            </div>
+            <Segmented
+              label="Show"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'fixed', label: 'Fixed' },
+                { value: 'variable', label: 'Variable' },
+              ]}
             />
           </div>
 
           {noMatches ? (
-            <div className="card py-10 text-center text-sm text-muted-foreground">
+            <div className="card py-10 text-center text-[14px] text-muted-foreground">
               No expenses match &ldquo;{query}&rdquo;.{' '}
               <button type="button" onClick={() => setQuery('')} className="font-semibold text-primary">
                 Clear search
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <section className="card space-y-1">
-                <div className="mb-1 flex items-baseline justify-between px-2">
-                  <div className="overline-label">Fixed</div>
-                  <div className="tnum text-xs text-text-muted">
-                    {formatCurrency(sum(household.active ? householdFixed.map((r) => r.expense) : fixed))}/mo
-                  </div>
-                </div>
-                {renderRows(fixed, householdFixed, 'No fixed expenses yet.')}
-              </section>
-
-              <section className="card space-y-1">
-                <div className="mb-1 flex items-baseline justify-between px-2">
-                  <div className="overline-label">Variable</div>
-                  <div className="tnum text-xs text-text-muted">
-                    {formatCurrency(sum(household.active ? householdVariable.map((r) => r.expense) : variable))}/mo
-                  </div>
-                </div>
-                {renderRows(variable, householdVariable, 'No variable expenses yet.')}
-              </section>
+            <div className={`grid grid-cols-1 gap-6 ${filter === 'all' ? 'lg:grid-cols-2' : ''}`}>
+              {filter !== 'variable' &&
+                group('Fixed', 'same every month', fixedList, fixed, householdFixed, 'No fixed expenses yet.')}
+              {filter !== 'fixed' &&
+                group('Variable', 'changes month to month', variableList, variable, householdVariable, 'No variable expenses yet.')}
             </div>
           )}
         </>
@@ -290,14 +347,18 @@ export function ExpensesPage() {
             aria-expanded={binOpen}
             className="flex w-full items-center justify-between text-left"
           >
-            <span className="overline-label">Recently removed ({removed.length})</span>
+            <span className="flex items-center gap-2 text-[15px] font-semibold">
+              <Trash2 size={16} strokeWidth={2} className="text-muted-foreground" />
+              Recently removed
+              <span className="chip chip-neutral !h-6">{removed.length}</span>
+            </span>
             <ChevronDown
-              size={16}
-              className={`text-text-muted transition-transform ${binOpen ? 'rotate-180' : ''}`}
+              size={18}
+              className={`text-text-subtle transition-transform ${binOpen ? 'rotate-180' : ''}`}
             />
           </button>
           {binOpen && (
-            <div className="mt-3 space-y-1 border-t border-hairline pt-3">
+            <div className="animate-enter mt-3 divide-y divide-hairline border-t border-hairline pt-2">
               {removed.map((expense) => (
                 <ExpenseRow
                   key={expense.id}

@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Select } from '@/components/ui/Select'
+import { SwitchRow } from '@/components/ui/Switch'
 import { EMPLOYMENT_TYPES, type EmploymentType, type NewTaxProfile, type TaxProfile } from '@/lib/types'
 
 interface TaxSetupFormProps {
@@ -49,10 +50,10 @@ export function TaxSetupForm({ initial, isSubmitting, onSubmit, onCancel }: TaxS
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-4">
+    <form onSubmit={handleSubmit} className="card-elevated space-y-5 sm:p-6">
       <div>
-        <h2 className="text-lg font-bold">Tax profile setup</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h2 className="text-[20px] font-bold tracking-[-0.02em]">Your tax profile</h2>
+        <p className="mt-1 text-[14px] text-muted-foreground">
           A few questions so Loot can estimate your tax accurately. You can update this any time.
         </p>
       </div>
@@ -77,56 +78,57 @@ export function TaxSetupForm({ initial, isSubmitting, onSubmit, onCancel }: TaxS
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={isProvisional} onChange={(e) => setIsProvisional(e.target.checked)} className="h-4 w-4 accent-primary" style={{ width: 'auto' }} />
-        I'm a provisional taxpayer (freelance/rental/investment income not covered by PAYE)
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={hasRa} onChange={(e) => setHasRa(e.target.checked)} className="h-4 w-4 accent-primary" style={{ width: 'auto' }} />
-        I contribute to a retirement annuity
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={hasInvestmentIncome} onChange={(e) => setHasInvestmentIncome(e.target.checked)} className="h-4 w-4 accent-primary" style={{ width: 'auto' }} />
-        I have investment income (interest, dividends, capital gains)
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={hasTravelAllowance} onChange={(e) => setHasTravelAllowance(e.target.checked)} className="h-4 w-4 accent-primary" style={{ width: 'auto' }} />
-        I receive a travel allowance
-      </label>
-
-      <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={homeOfficeEnabled} onChange={(e) => setHomeOfficeEnabled(e.target.checked)} className="h-4 w-4 accent-primary" style={{ width: 'auto' }} />
-          I regularly work from a dedicated home office
-        </label>
-        {homeOfficeEnabled && (
-          <div className="grid grid-cols-2 gap-3 pl-6">
-            <div>
-              <label className="field-label" htmlFor="home-office-area">
-                Office area (m²)
-              </label>
-              <input id="home-office-area" type="number" min={0} value={homeOfficeArea} onChange={(e) => setHomeOfficeArea(e.target.value)} />
+      <div className="divide-y divide-hairline rounded-xl bg-surface-2 px-4">
+        <div className="py-2">
+          <SwitchRow
+            label="Provisional taxpayer"
+            hint="Freelance, rental or investment income not covered by PAYE"
+            checked={isProvisional}
+            onChange={setIsProvisional}
+          />
+        </div>
+        <div className="py-2">
+          <SwitchRow label="I contribute to a retirement annuity" checked={hasRa} onChange={setHasRa} />
+        </div>
+        <div className="py-2">
+          <SwitchRow
+            label="Investment income"
+            hint="Interest, dividends or capital gains"
+            checked={hasInvestmentIncome}
+            onChange={setHasInvestmentIncome}
+          />
+        </div>
+        <div className="py-2">
+          <SwitchRow label="I receive a travel allowance" checked={hasTravelAllowance} onChange={setHasTravelAllowance} />
+        </div>
+        <div className="py-2">
+          <SwitchRow
+            label="Dedicated home office"
+            hint="You regularly work from a room used only for work"
+            checked={homeOfficeEnabled}
+            onChange={setHomeOfficeEnabled}
+          />
+          {homeOfficeEnabled && (
+            <div className="grid grid-cols-2 gap-3 pt-2 pb-2">
+              <div>
+                <label className="field-label" htmlFor="home-office-area">
+                  Office area (m²)
+                </label>
+                <input id="home-office-area" type="number" min={0} value={homeOfficeArea} onChange={(e) => setHomeOfficeArea(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="home-total-area">
+                  Home total area (m²)
+                </label>
+                <input id="home-total-area" type="number" min={0} value={homeTotalArea} onChange={(e) => setHomeTotalArea(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="field-label" htmlFor="home-total-area">
-                Home total area (m²)
-              </label>
-              <input id="home-total-area" type="number" min={0} value={homeTotalArea} onChange={(e) => setHomeTotalArea(e.target.value)} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={hasMedicalAid} onChange={(e) => setHasMedicalAid(e.target.checked)} className="h-4 w-4 accent-primary" style={{ width: 'auto' }} />
-          I belong to a medical aid / medical scheme
-        </label>
+          )}
+        </div>
+        <div className="py-2">
+          <SwitchRow label="I belong to a medical aid" checked={hasMedicalAid} onChange={setHasMedicalAid} />
         {hasMedicalAid && (
-          <div className="pl-6">
+          <div className="pt-2 pb-2">
             <label className="field-label" htmlFor="medical-dependants">
               Dependants on the scheme (excluding yourself)
             </label>
@@ -140,6 +142,7 @@ export function TaxSetupForm({ initial, isSubmitting, onSubmit, onCancel }: TaxS
             />
           </div>
         )}
+        </div>
       </div>
 
       <div className="flex gap-3">

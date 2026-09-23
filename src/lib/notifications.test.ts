@@ -84,10 +84,10 @@ describe('notification candidates', () => {
     it('needs a 30 point swing in either direction', () => {
       expect(gen({ latestScore: score('2026-09-01', 700), previousScore: score('2026-08-01', 680) })).toEqual([])
       const up = gen({ latestScore: score('2026-09-01', 720), previousScore: score('2026-08-01', 680) })
-      expect(up[0].title).toBe('Your Loot Score improved')
-      expect(up[0].body).toContain('+40')
+      expect(up[0].title).toBe('Your money habits improved')
+      expect(up[0].body).toContain('+4')
       const down = gen({ latestScore: score('2026-09-01', 640), previousScore: score('2026-08-01', 680) })
-      expect(down[0].title).toBe('Your Loot Score dropped')
+      expect(down[0].title).toBe('Your money habits slipped')
       expect(gen({ latestScore: score('2026-09-01', 720), previousScore: null })).toEqual([])
     })
   })

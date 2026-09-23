@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { GoalForm } from '@/components/goals/GoalForm'
 import { PauseGoalModal } from '@/components/goals/PauseGoalModal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { Segmented } from '@/components/ui/Segmented'
 import {
   useAddContribution,
   useDeleteContribution,
@@ -13,7 +14,7 @@ import {
   useGoalContributions,
   useUpdateGoal,
 } from '@/hooks/useGoals'
-import { goalCategoryIcon } from '@/lib/categories'
+import { goalCategoryColor, goalCategoryIcon } from '@/lib/categories'
 import { deadlineLabel, parseDateOnly, remainingAmount, requiredMonthlyContribution } from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
 import { router } from '@/router'
@@ -45,16 +46,16 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
   if (!goal) {
     return (
       <div className="animate-enter mx-auto max-w-2xl space-y-6">
-        <Link to="/goals" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft size={15} strokeWidth={1.75} />
-          Back to goals
+        <Link to="/goals" className="inline-flex items-center gap-1 text-[15px] font-medium text-primary">
+          <ArrowLeft size={17} strokeWidth={2} />
+          Goals
         </Link>
         <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
-            <Target size={32} strokeWidth={1.75} />
+          <div className="grid h-16 w-16 place-items-center rounded-full bg-fill">
+            <Target size={30} strokeWidth={1.8} />
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-lg font-bold">This goal isn't here any more.</h2>
+            <h2 className="text-[20px] font-bold tracking-[-0.02em]">This goal isn&apos;t here any more</h2>
             <p className="max-w-sm text-sm text-muted-foreground">It may have been deleted, or the link is out of date.</p>
           </div>
           <Link to="/goals" className="btn btn-primary">
@@ -144,92 +145,115 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
     ? parseDateOnly(goal.resume_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
+  const color = goal.is_completed ? 'var(--accent)' : goal.is_paused ? 'var(--chart-7)' : goalCategoryColor(goal.category)
+  const pct = Math.min(100, Math.round(progress * 100))
+  const R = 52
+  const C = 2 * Math.PI * R
+
   return (
-    <div className="animate-enter mx-auto max-w-2xl space-y-6">
-      <Link to="/goals" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft size={15} strokeWidth={1.75} />
-        Back to goals
+    <div className="animate-enter mx-auto max-w-3xl space-y-6">
+      <Link to="/goals" className="inline-flex items-center gap-1 text-[15px] font-medium text-primary">
+        <ArrowLeft size={17} strokeWidth={2} />
+        Goals
       </Link>
 
-      <div className="card-elevated space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/[0.08]">
-            <Icon size={20} strokeWidth={1.75} />
+      <section className="card-elevated space-y-6 sm:p-7">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+          <div className="relative mx-auto h-[128px] w-[128px] shrink-0 sm:mx-0">
+            <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90" aria-hidden="true">
+              <circle cx="64" cy="64" r={R} fill="none" stroke="var(--fill-2)" strokeWidth="12" />
+              <circle
+                cx="64"
+                cy="64"
+                r={R}
+                fill="none"
+                stroke={color}
+                strokeWidth="12"
+                strokeLinecap="round"
+                strokeDasharray={`${(pct / 100) * C} ${C}`}
+                className="transition-[stroke-dasharray] duration-700"
+              />
+            </svg>
+            <div className="absolute inset-0 grid place-items-center text-center">
+              <div>
+                <span className="grid place-items-center" style={{ color }}>
+                  <Icon size={20} strokeWidth={2.1} />
+                </span>
+                <span className="tnum block text-[24px] font-bold tracking-[-0.03em]">{pct}%</span>
+              </div>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold">{goal.name}</h1>
-            {goal.note && <p className="text-sm text-muted-foreground">{goal.note}</p>}
-            {isAuto && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-primary">
-                <Sparkles size={12} strokeWidth={1.75} /> Auto-funded · weight {goal.weight}
-              </p>
-            )}
-          </div>
-          <div className="flex gap-1.5">
-            <button type="button" onClick={() => setEditOpen(true)} className="btn btn-ghost">
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              aria-label="Delete goal"
-              className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-border text-muted-foreground hover:border-alert/30 hover:text-alert"
-            >
-              <Trash2 size={15} strokeWidth={1.75} />
-            </button>
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.min(100, progress * 100)}%` }} />
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="tnum font-semibold">
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h1 className="page-title !text-[30px]">{goal.name}</h1>
+            {goal.note && <p className="mt-1 text-[15px] text-muted-foreground">{goal.note}</p>}
+            <p className="tnum mt-3 text-[17px] font-semibold">
               {formatCurrency(goal.current_amount)}{' '}
-              <span className="font-normal text-text-muted">/ {formatCurrency(goal.target_amount)}</span>
-            </span>
-            <span className="text-text-muted">
-              {goal.is_completed ? 'Completed 🎉' : deadlineLabel(goal.target_date)}
-            </span>
-          </div>
-          {!goal.is_completed && !goal.is_paused && (
-            <p className="text-xs text-text-muted">
-              {formatCurrency(remaining)} to go
-              {monthly > 0 && <> — needs {formatCurrency(monthly)}/month to hit its target date.</>}
+              <span className="font-medium text-muted-foreground">of {formatCurrency(goal.target_amount)}</span>
             </p>
-          )}
-          {goal.is_paused && (
-            <p className="text-xs text-text-muted">Paused{resumeLabel ? ` — resumes on ${resumeLabel}` : ''}.</p>
-          )}
+            <div className="mt-2 flex flex-wrap justify-center gap-2 sm:justify-start">
+              <span className={`chip ${goal.is_completed ? 'chip-positive' : goal.is_paused ? 'chip-neutral' : 'chip-neutral'}`}>
+                {goal.is_completed
+                  ? 'Completed'
+                  : goal.is_paused
+                    ? `Paused${resumeLabel ? ` · resumes ${resumeLabel}` : ''}`
+                    : deadlineLabel(goal.target_date)}
+              </span>
+              {isAuto && (
+                <span className="chip chip-positive">
+                  <Sparkles size={12} strokeWidth={2.2} /> Auto-funded · weight {goal.weight}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        {!goal.is_completed && (
-          <div>
-            {goal.is_paused ? (
+        {!goal.is_completed && !goal.is_paused && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-surface-2 p-4">
+              <p className="text-[12.5px] text-muted-foreground">Still to go</p>
+              <p className="tnum text-[20px] font-bold tracking-[-0.02em]">{formatCurrency(remaining)}</p>
+            </div>
+            <div className="rounded-2xl bg-surface-2 p-4">
+              <p className="text-[12.5px] text-muted-foreground">Needed each month</p>
+              <p className="tnum text-[20px] font-bold tracking-[-0.02em]">
+                {monthly > 0 ? formatCurrency(monthly) : '—'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 border-t border-hairline pt-4">
+          <button type="button" onClick={() => setEditOpen(true)} className="btn btn-ghost">
+            Edit goal
+          </button>
+          {!goal.is_completed &&
+            (goal.is_paused ? (
               <button type="button" onClick={handleResume} disabled={updateGoal.isPending} className="btn btn-ghost">
-                <Play size={14} strokeWidth={1.75} /> Resume goal
+                <Play size={15} strokeWidth={2} /> Resume
               </button>
             ) : (
               <button type="button" onClick={() => setPauseOpen(true)} className="btn btn-ghost">
-                <Pause size={14} strokeWidth={1.75} /> Pause goal
+                <Pause size={15} strokeWidth={2} /> Pause
               </button>
-            )}
-          </div>
-        )}
-      </div>
+            ))}
+          <button type="button" onClick={() => setConfirmDelete(true)} className="btn btn-destructive sm:ml-auto">
+            <Trash2 size={15} strokeWidth={2} /> Delete
+          </button>
+        </div>
+      </section>
 
       {editOpen && (
-        <section ref={editFormRef} className="card-elevated animate-enter space-y-4">
+        <section ref={editFormRef} className="card-elevated animate-enter scroll-mt-6 space-y-5 sm:p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">Edit goal</h2>
+            <h2 className="text-[20px] font-bold tracking-[-0.02em]">Edit goal</h2>
             <button
               type="button"
               onClick={() => setEditOpen(false)}
               aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              className="grid h-9 w-9 place-items-center rounded-full bg-fill text-muted-foreground hover:text-foreground"
             >
-              <X size={16} strokeWidth={1.75} />
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
           <GoalForm
@@ -242,27 +266,18 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
         </section>
       )}
 
-      <form onSubmit={handleSubmitAmount} className="card space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="overline-label">{mode === 'add' ? 'Add money' : 'Take money out'}</div>
-          <div className="flex gap-1 rounded-[10px] border border-border bg-input p-1 text-xs font-semibold">
-            <button
-              type="button"
-              aria-pressed={mode === 'add'}
-              onClick={() => setMode('add')}
-              className={`rounded-lg px-3 py-1.5 ${mode === 'add' ? 'bg-surface-3 text-foreground' : 'text-text-muted'}`}
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              aria-pressed={mode === 'withdraw'}
-              onClick={() => setMode('withdraw')}
-              className={`rounded-lg px-3 py-1.5 ${mode === 'withdraw' ? 'bg-surface-3 text-foreground' : 'text-text-muted'}`}
-            >
-              Withdraw
-            </button>
-          </div>
+      <form onSubmit={handleSubmitAmount} className="card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="card-title">{mode === 'add' ? 'Add money' : 'Take money out'}</h2>
+          <Segmented
+            label="Contribution type"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'add', label: 'Add' },
+              { value: 'withdraw', label: 'Withdraw' },
+            ]}
+          />
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
           <input
@@ -281,39 +296,51 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
             {mode === 'add' ? 'Add' : 'Withdraw'}
           </button>
         </div>
+        <p className="text-[12.5px] text-muted-foreground">
+          Loot only tracks this — move the money with your bank too.
+        </p>
       </form>
 
-      <div className="space-y-2">
-        <div className="overline-label px-1">History</div>
+      <section className="space-y-2">
+        <h2 className="card-title px-1">History</h2>
         {contributions.length === 0 ? (
-          <p className="px-1 text-sm text-text-muted">Nothing logged yet.</p>
+          <div className="card text-[14px] text-muted-foreground">Nothing logged yet.</div>
         ) : (
-          <div className="card space-y-1">
-            {contributions.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-[10px] px-2 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(c.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </p>
-                  {c.note && <p className="truncate text-xs text-text-muted">{c.note}</p>}
+          <div className="card !px-4 !py-2">
+            <div className="divide-y divide-hairline">
+              {contributions.map((c) => (
+                <div key={c.id} className="group flex items-center gap-3 py-3">
+                  <span
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-[15px] font-bold ${
+                      c.amount < 0 ? 'bg-caution/12 text-caution' : 'bg-primary/12 text-primary'
+                    }`}
+                  >
+                    {c.amount < 0 ? '−' : '+'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-medium">{c.note || (c.amount < 0 ? 'Withdrawal' : 'Contribution')}</p>
+                    <p className="text-[12.5px] text-muted-foreground">
+                      {new Date(c.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span className={`tnum text-[15px] font-semibold ${c.amount < 0 ? 'text-caution' : 'text-primary'}`}>
+                    {c.amount < 0 ? '−' : '+'}
+                    {formatCurrency(Math.abs(c.amount))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEntryToRemove(c)}
+                    aria-label="Remove entry"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-text-subtle hover:bg-fill hover:text-alert"
+                  >
+                    <Trash2 size={15} strokeWidth={1.9} />
+                  </button>
                 </div>
-                <span className={`tnum text-sm font-semibold ${c.amount < 0 ? 'text-caution' : 'text-primary'}`}>
-                  {c.amount < 0 ? '−' : '+'}
-                  {formatCurrency(Math.abs(c.amount))}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setEntryToRemove(c)}
-                  aria-label="Remove entry"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-alert"
-                >
-                  <Trash2 size={14} strokeWidth={1.75} />
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
-      </div>
+      </section>
 
       {pauseOpen && (
         <PauseGoalModal goal={goal} isPending={updateGoal.isPending} onConfirm={handlePause} onCancel={() => setPauseOpen(false)} />

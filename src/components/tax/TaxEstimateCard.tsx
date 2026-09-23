@@ -11,21 +11,19 @@ interface RowProps {
 
 function Row({ label, value, bold, muted }: RowProps) {
   return (
-    <div className="flex items-center justify-between py-2">
-      <span className={`text-sm ${muted ? 'text-text-muted' : 'text-muted-foreground'}`}>{label}</span>
-      <span className={`tnum text-sm ${bold ? 'font-bold text-foreground' : ''}`}>{value}</span>
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <span className={`text-[14px] ${bold ? 'font-semibold text-foreground' : muted ? 'text-text-subtle' : 'text-muted-foreground'}`}>{label}</span>
+      <span className={`tnum text-[14.5px] ${bold ? 'font-bold text-foreground' : muted ? 'text-muted-foreground' : 'font-medium'}`}>{value}</span>
     </div>
   )
 }
 
 export function TaxEstimateCard({ estimate }: { estimate: TaxEstimate }) {
   return (
-    <div className="card-elevated space-y-1">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-lg font-bold">Tax estimate — {estimate.taxYear}</h2>
-        {estimate.belowThreshold && (
-          <span className="overline-label rounded-full bg-primary/15 px-2.5 py-1 text-primary">Below threshold</span>
-        )}
+    <div className="card sm:p-6">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="card-title">How your tax is worked out</h2>
+        {estimate.belowThreshold && <span className="chip chip-positive">Below threshold</span>}
       </div>
 
       <Row label="Gross annual income" value={formatCurrency(estimate.grossAnnualIncome)} />
@@ -56,21 +54,21 @@ export function TaxEstimateCard({ estimate }: { estimate: TaxEstimate }) {
       {estimate.marginalRate > 0 && <Row label="Marginal rate (on your next rand)" value={`${estimate.marginalRate.toFixed(0)}%`} muted />}
       {estimate.payeWithheld > 0 && <Row label="PAYE assumed withheld by your employer" value={formatCurrency(estimate.payeWithheld)} muted />}
 
-      <div className="mt-3 flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-3">
-        <span className="flex items-center gap-1.5 text-sm font-semibold">
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-surface-2 px-4 py-3.5">
+        <span className="flex items-center gap-1.5 text-[14px] font-semibold">
           {estimate.payeAssumed
             ? estimate.refundOrOweEstimate > 0
               ? 'Estimated refund from your deductions'
               : 'Estimated tax on top of PAYE'
             : 'Estimated tax to pay for the year'}
         </span>
-        <span className={`tnum text-base font-bold ${estimate.refundOrOweEstimate > 0 ? 'text-primary' : estimate.refundOrOweEstimate < 0 ? 'text-alert' : ''}`}>
+        <span className={`tnum text-[20px] font-bold tracking-[-0.02em] ${estimate.refundOrOweEstimate > 0 ? 'text-primary' : estimate.refundOrOweEstimate < 0 ? 'text-alert' : ''}`}>
           {formatCurrency(Math.abs(estimate.refundOrOweEstimate))}
         </span>
       </div>
 
-      <p className="flex items-start gap-1.5 pt-2 text-xs text-text-subtle">
-        <HelpCircle size={13} strokeWidth={1.75} className="mt-0.5 shrink-0" />
+      <p className="flex items-start gap-1.5 pt-3 text-[12.5px] text-muted-foreground">
+        <HelpCircle size={14} strokeWidth={1.9} className="mt-0.5 shrink-0" />
         An estimate from SARS's published tax tables.
         {estimate.payeAssumed
           ? ' It assumes your payroll deducted PAYE on your full salary without the deductions tracked below, so those come back as a refund.'

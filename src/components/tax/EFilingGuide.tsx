@@ -60,34 +60,40 @@ export function EFilingGuide({ profile }: { profile: TaxProfile | null }) {
   const steps = buildSteps(profile)
 
   return (
-    <div className="card space-y-3">
+    <div className="card space-y-3 sm:p-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold">eFiling guide</h3>
+        <h3 className="card-title">How to file with SARS</h3>
         <a
           href="https://www.sars.gov.za/individuals/how-do-i-submit-my-return/"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1 text-xs font-semibold text-primary"
+          className="flex items-center gap-1 text-[13px] font-semibold text-primary"
         >
           SARS eFiling <ExternalLink size={12} strokeWidth={1.75} />
         </a>
       </div>
-      <div className="space-y-1.5">
+      <div className="divide-y divide-hairline">
         {steps.map((step, i) => {
           const isOpen = openIndex === i
           return (
-            <div key={step.title} className="rounded-lg bg-surface-2">
+            <div key={step.title}>
               <button
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : i)}
-                className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-semibold"
+                aria-expanded={isOpen}
+                className="flex w-full items-center gap-3 py-3 text-left"
               >
-                <span>
-                  {i + 1}. {step.title}
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${
+                    isOpen ? 'bg-primary text-primary-foreground' : 'bg-fill text-muted-foreground'
+                  }`}
+                >
+                  {i + 1}
                 </span>
-                <ChevronDown size={14} strokeWidth={1.75} className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <span className="flex-1 text-[14.5px] font-semibold">{step.title}</span>
+                <ChevronDown size={16} strokeWidth={2} className={`shrink-0 text-text-subtle transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>
-              {isOpen && <p className="px-3.5 pb-3 text-xs text-muted-foreground">{step.body}</p>}
+              {isOpen && <p className="animate-enter pb-3 pl-10 text-[13.5px] leading-relaxed text-muted-foreground">{step.body}</p>}
             </div>
           )
         })}

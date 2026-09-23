@@ -1,98 +1,84 @@
+import { Link } from '@tanstack/react-router'
+import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { categoryLabel } from '@/lib/categories'
-import { GROWTH_CATEGORIES } from '@/lib/categories'
+import { categoryColor, categoryIcon, categoryLabel, GROWTH_CATEGORIES } from '@/lib/categories'
 import { monthlyEquivalent } from '@/lib/money'
 import { formatCurrency } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
-const PALETTE = ['#AF72FE', '#C1FE72', '#5BC0EB', '#F0A857', '#FF7F7F', '#8B5CF6', '#7DD9C5']
+const MAX_ROWS = 7
 
-export function WhereYourLootGoes({ expenses }: { expenses: Expense[] }) {
-  const { spendSlices, growthTotal, total } = useMemo(() => {
-    const active = expenses.filter((e) => !e.deleted_at)
+/** Screen-Time-style ranked bars of monthly spend per category. Saving & growing is shown as its own line. */
+export function WhereYourLootGoes({ expenses, compact = false }: { expenses: Expense[]; compact?: boolean }) {
+  const { rows, growthTotal, spendTotal } = useMemo(() => {
     const totals = new Map<string, number>()
     let growth = 0
-    for (const e of active) {
+    for (const e of expenses) {
+      if (e.deleted_at) continue
       const amount = monthlyEquivalent(e)
+      if (amount <= 0) continue
       if (GROWTH_CATEGORIES.has(e.category as never)) {
         growth += amount
         continue
       }
       totals.set(e.category, (totals.get(e.category) ?? 0) + amount)
     }
-    const slices = Array.from(totals.entries())
+    const sorted = Array.from(totals.entries())
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount)
-    const grandTotal = slices.reduce((s, x) => s + x.amount, 0) + growth
-    return { spendSlices: slices, growthTotal: growth, total: grandTotal }
-  }, [expenses])
+    const limit = compact ? 5 : MAX_ROWS
+    const head = sorted.slice(0, limit)
+    const tail = sorted.slice(limit)
+    if (tail.length > 0) head.push({ category: 'other_rollup', amount: tail.reduce((s, x) => s + x.amount, 0) })
+    return { rows: head, growthTotal: growth, spendTotal: sorted.reduce((s, x) => s + x.amount, 0) }
+  }, [expenses, compact])
 
-  if (total === 0) {
-    return (
-      <div className="card flex h-full flex-col items-center justify-center gap-2 py-10 text-center">
-        <p className="text-sm font-semibold">Where your loot goes</p>
-        <p className="text-xs text-text-muted">Add expenses to see the breakdown.</p>
-      </div>
-    )
-  }
+  const top = rows[0]?.amount || 1
 
   return (
-    <div className="card space-y-4">
-      <div className="overline-label">Where your loot goes</div>
-      <div className="flex items-center gap-5">
-        <div className="h-28 w-28 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={spendSlices}
-                dataKey="amount"
-                nameKey="category"
-                innerRadius={38}
-                outerRadius={54}
-                paddingAngle={2}
-                stroke="none"
-              >
-                {spendSlices.map((slice, i) => (
-                  <Cell key={slice.category} fill={PALETTE[i % PALETTE.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value, name) => [formatCurrency(Number(value) || 0), categoryLabel(String(name))]}
-                contentStyle={{
-                  background: '#211B1B',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <ul className="min-w-0 flex-1 space-y-1.5">
-          {spendSlices.slice(0, 5).map((slice, i) => (
-            <li key={slice.category} className="flex items-center gap-2 text-xs">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: PALETTE[i % PALETTE.length] }}
-              />
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                {categoryLabel(slice.category)}
-              </span>
-              <span className="tnum shrink-0 font-semibold">{formatCurrency(slice.amount)}</span>
-            </li>
-          ))}
-          {growthTotal > 0 && (
-            <li className="flex items-center gap-2 border-t border-hairline pt-1.5 text-xs">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
-              <span className="min-w-0 flex-1 truncate text-primary">Saving & growing</span>
-              <span className="tnum shrink-0 font-semibold text-primary">
-                {formatCurrency(growthTotal)}
-              </span>
-            </li>
-          )}
-        </ul>
+    <section className="card h-full">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="card-title">Where it goes</h3>
+        <Link to="/expenses" className="inline-flex items-center text-[13px] font-semibold text-primary">
+          All expenses <ChevronRight size={15} />
+        </Link>
       </div>
-    </div>
+      {rows.length === 0 ? (
+        <p className="py-6 text-center text-[13px] text-muted-foreground">Add expenses to see the breakdown.</p>
+      ) : (
+        <ul className="space-y-3.5">
+          {rows.map((row) => {
+            const isRollup = row.category === 'other_rollup'
+            const Icon = categoryIcon(isRollup ? 'other' : row.category)
+            const color = isRollup ? 'var(--chart-7)' : categoryColor(row.category)
+            return (
+              <li key={row.category} className="grid grid-cols-[30px_1fr_auto] items-center gap-3">
+                <span className="grid h-[30px] w-[30px] place-items-center rounded-[9px] text-white" style={{ background: color }}>
+                  <Icon size={15} strokeWidth={2.1} />
+                </span>
+                <div className="min-w-0">
+                  <div className="mb-1.5 flex justify-between gap-2 text-[13.5px] font-medium">
+                    <span className="truncate">{isRollup ? 'Everything else' : categoryLabel(row.category)}</span>
+                    <span className="tnum shrink-0 text-[12.5px] font-medium text-muted-foreground">
+                      {Math.round((row.amount / (spendTotal || 1)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-fill">
+                    <span className="block h-full rounded-full" style={{ width: `${(row.amount / top) * 100}%`, background: color }} />
+                  </div>
+                </div>
+                <span className="tnum min-w-[76px] text-right text-[14px] font-semibold">{formatCurrency(row.amount)}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {growthTotal > 0 && (
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-primary/10 px-3.5 py-2.5 text-[13px] font-semibold text-primary">
+          <span>Saving &amp; growing each month</span>
+          <span className="tnum">{formatCurrency(growthTotal)}</span>
+        </div>
+      )}
+    </section>
   )
 }

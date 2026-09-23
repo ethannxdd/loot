@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { useAuth } from '@/hooks/useAuth'
+import { SettingsHeading } from '@/components/settings/SettingsHeading'
 import {
   useAcceptHouseholdInvite,
   useCreateHousehold,
@@ -23,20 +24,18 @@ export function HouseholdSection() {
   const createHousehold = useCreateHousehold()
   const acceptInvite = useAcceptHouseholdInvite()
 
-  if (isLoading) return <div className="skeleton h-40 rounded-2xl" />
+  if (isLoading) return <div className="skeleton h-40 rounded-[22px]" />
 
   return (
     <section className="card space-y-4">
-      <div className="overline-label flex items-center gap-1.5">
-        <Users size={13} strokeWidth={2} /> Household
-      </div>
+      <SettingsHeading icon={Users} title="Household" color="var(--chart-2)" />
 
       {pendingInvites.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-primary/25 bg-primary/8 p-3.5">
-          <p className="text-xs font-semibold text-primary">You've been invited to a household</p>
+        <div className="space-y-2 rounded-2xl bg-primary/10 p-4">
+          <p className="text-[14px] font-semibold text-primary">You've been invited to a household</p>
           {pendingInvites.map((invite) => (
             <div key={invite.id} className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Invited on {new Date(invite.created_at).toLocaleDateString('en-ZA')} · expires{' '}
                 {new Date(invite.expires_at).toLocaleDateString('en-ZA')}
               </p>
@@ -47,7 +46,7 @@ export function HouseholdSection() {
                 }
                 disabled={acceptInvite.isPending || Boolean(household)}
                 title={household ? 'Leave your current household first' : undefined}
-                className="btn btn-primary !h-8 !px-3 !text-xs"
+                className="btn btn-primary !min-h-9 !px-3.5 !text-[13px]"
               >
                 {acceptInvite.isPending && <Loader2 size={12} className="animate-spin" />}
                 Accept
@@ -55,14 +54,14 @@ export function HouseholdSection() {
             </div>
           ))}
           {household && (
-            <p className="text-[11px] text-text-muted">You’re already in a household — leave it below to accept an invite.</p>
+            <p className="text-[12.5px] text-muted-foreground">You’re already in a household — leave it below to accept an invite.</p>
           )}
         </div>
       )}
 
       {!household ? (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[14px] text-muted-foreground">
             Link with a partner to see combined income, expenses, and totals — each of you keeps an individual view
             too.
           </p>
@@ -73,7 +72,7 @@ export function HouseholdSection() {
             className="btn btn-secondary"
           >
             {createHousehold.isPending && <Loader2 size={15} className="animate-spin" />}
-            <UserPlus size={15} strokeWidth={1.75} /> Start a household
+            <UserPlus size={15} strokeWidth={2} /> Start a household
           </button>
         </div>
       ) : (
@@ -148,21 +147,21 @@ function HouseholdManager({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <p className="overline-label">Linked partners</p>
+        <h3 className="text-[15px] font-semibold">Linked partners</h3>
         {partnerRows.length === 0 && pendingSentInvites.length === 0 && (
-          <p className="text-xs text-text-muted">No one linked yet.</p>
+          <p className="text-[13px] text-muted-foreground">No one linked yet.</p>
         )}
         {partnerRows.map((memberRow) => {
           const profile = partnerProfiles.find((p) => p.id === memberRow.user_id)
           const name = profile?.display_name || 'Household member'
           return (
-            <div key={memberRow.id} className="flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-2.5 text-sm">
+            <div key={memberRow.id} className="flex items-center justify-between rounded-xl bg-fill px-3.5 py-3 text-[15px]">
               <span>{name}</span>
               {isOwner && (
                 <button
                   type="button"
                   onClick={() => setConfirm({ kind: 'unlink', memberRowId: memberRow.id, name })}
-                  className="text-xs font-semibold text-alert hover:underline"
+                  className="text-[13px] font-semibold text-alert hover:underline"
                 >
                   Unlink
                 </button>
@@ -172,19 +171,19 @@ function HouseholdManager({
         })}
         {isOwner &&
           pendingSentInvites.map((invite) => (
-            <div key={invite.id} className="flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-2.5 text-sm">
+            <div key={invite.id} className="flex items-center justify-between rounded-xl bg-fill px-3.5 py-3 text-[15px]">
               <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                <Mail size={13} strokeWidth={1.75} className="shrink-0" />
+                <Mail size={13} strokeWidth={2} className="shrink-0" />
                 <span className="truncate">{invite.email}</span>
-                <span className="shrink-0 text-text-muted">· pending</span>
+                <span className="chip chip-neutral shrink-0">Pending</span>
               </span>
               <button
                 type="button"
                 onClick={() => revokeInvite.mutate({ id: invite.id, householdId })}
                 aria-label={`Revoke invite to ${invite.email}`}
-                className="text-text-muted hover:text-alert"
+                className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-fill-2 hover:text-alert"
               >
-                <X size={14} strokeWidth={1.75} />
+                <X size={14} strokeWidth={2} />
               </button>
             </div>
           ))}
@@ -206,14 +205,14 @@ function HouseholdManager({
               Invite
             </button>
           </form>
-          <p className="text-[11px] text-text-muted">
+          <p className="text-[12.5px] text-muted-foreground">
             Loot doesn’t send an email for you — tell your partner to sign up or sign in to Loot with this address, and
             the invite will appear here in their Settings. Invites last 7 days.
           </p>
           <button
             type="button"
             onClick={() => setConfirm({ kind: 'disband' })}
-            className="text-xs font-semibold text-alert hover:underline"
+            className="text-[13px] font-semibold text-alert hover:underline"
           >
             Disband household
           </button>
@@ -223,7 +222,7 @@ function HouseholdManager({
           <button
             type="button"
             onClick={() => setConfirm({ kind: 'leave', memberRowId: myMemberRow.id })}
-            className="text-xs font-semibold text-alert hover:underline"
+            className="text-[13px] font-semibold text-alert hover:underline"
           >
             Leave this household
           </button>

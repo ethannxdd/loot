@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/hooks/useAuth'
 import { useDeleteAccount, useExportData, useResetAllData } from '@/hooks/useAccountData'
+import { SettingsHeading } from '@/components/settings/SettingsHeading'
 
 export function DataSection() {
   const { signOut } = useAuth()
@@ -43,34 +44,30 @@ export function DataSection() {
   return (
     <>
       <section className="card space-y-4">
-        <div className="overline-label flex items-center gap-1.5">
-          <Database size={13} strokeWidth={2} /> Your data
-        </div>
+        <SettingsHeading icon={Database} title="Your data" color="var(--label-3)" />
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold">Export everything</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Download all your Loot data as a JSON file.</p>
+            <p className="text-[15px] font-medium">Export everything</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Download all your Loot data as a JSON file.</p>
           </div>
           <button
             type="button"
             onClick={() => exportData.mutate(undefined, { onSuccess: () => toast.success('Export downloaded') })}
             disabled={exportData.isPending}
-            className="btn btn-ghost shrink-0"
+            className="btn btn-secondary shrink-0"
           >
-            {exportData.isPending ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} strokeWidth={1.75} />}
+            {exportData.isPending ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} strokeWidth={2} />}
             Export
           </button>
         </div>
       </section>
 
-      <section className="card space-y-3 border border-alert/25">
-        <div className="overline-label flex items-center gap-1.5 !text-alert">
-          <TriangleAlert size={13} strokeWidth={2} /> Danger zone
-        </div>
+      <section className="card space-y-4">
+        <SettingsHeading icon={TriangleAlert} title="Danger zone" color="var(--alert)" />
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold">Reset all data</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="text-[15px] font-medium">Reset all data</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Deletes your expenses, goals, plans, snapshots, tax data and scores, and zeroes your income. Your account stays.
             </p>
           </div>
@@ -80,8 +77,8 @@ export function DataSection() {
         </div>
         <div className="flex items-center justify-between gap-4 border-t border-hairline pt-3">
           <div>
-            <p className="text-sm font-semibold">Delete account</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="text-[15px] font-medium">Delete account</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Permanently deletes your account and everything in it. This can’t be undone.
             </p>
           </div>
@@ -96,15 +93,15 @@ export function DataSection() {
         </div>
       </section>
 
-      <button type="button" onClick={() => void signOut()} className="btn btn-ghost w-full sm:w-auto">
-        <LogOut size={16} strokeWidth={1.75} />
+      <button type="button" onClick={() => void signOut()} className="btn btn-secondary w-full sm:w-auto">
+        <LogOut size={16} strokeWidth={2} />
         Sign out
       </button>
 
       {resetOpen && (
         <Modal title="Reset all data?" onClose={closeReset}>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[14px] text-muted-foreground">
               This permanently deletes everything you’ve entered in Loot. It can’t be undone — consider exporting first.
             </p>
             <div>
@@ -141,12 +138,12 @@ export function DataSection() {
       {deleteOpen && (
         <Modal title="Delete your account?" onClose={closeDelete}>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[14px] text-muted-foreground">
               This permanently deletes your Loot account and all of your data — expenses, goals, plans, tax details,
               scores and history. You’ll be signed out straight away and won’t be able to get it back. Consider
               exporting your data first.
             </p>
-            <p className="text-xs text-text-muted">
+            <p className="text-[13px] text-muted-foreground">
               If you own a household, it’s removed too — your partner keeps their own account and data but is unlinked.
             </p>
             <div>
