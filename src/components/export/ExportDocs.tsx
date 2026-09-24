@@ -38,19 +38,7 @@ const today = () => new Date().toLocaleDateString('en-ZA', { day: 'numeric', mon
 /* ---------- primitives ---------- */
 
 function Mark() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden>
-      <defs>
-        <linearGradient id="docmark" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#1fcf93" />
-          <stop offset="0.55" stopColor="#0a8f63" />
-          <stop offset="1" stopColor="#066a4a" />
-        </linearGradient>
-      </defs>
-      <path d="M0 18C0 8 8 0 18 0h28c10 0 18 8 18 18v28c0 10-8 18-18 18H18C8 64 0 56 0 46Z" fill="url(#docmark)" />
-      <path d="M22 42 L42 22 M42 22 H28 M42 22 V36" stroke="#fff" strokeWidth={5.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </svg>
-  )
+  return <img src="/icons/app-icon.svg" width={22} height={22} alt="" style={{ width: 22, height: 22, borderRadius: 6 }} />
 }
 
 function Eyebrow({ children }: { children: ReactNode }) {
