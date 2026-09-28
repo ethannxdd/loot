@@ -95,6 +95,24 @@ export function useAddExpense() {
   })
 }
 
+/** Adds several expenses in one insert (e.g. applying a salary-planner phase) and syncs the snapshot once. */
+export function useAddExpenses() {
+  const { user, invalidateAndSync } = useExpensesMutation()
+  return useMutation({
+    mutationFn: async (expenses: NewExpense[]) => {
+      if (!user) throw new Error('Not signed in')
+      if (expenses.length === 0) return [] as Expense[]
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expenses.map((e) => ({ ...e, user_id: user.id })))
+        .select()
+      if (error) throw error
+      return data as Expense[]
+    },
+    onSuccess: invalidateAndSync,
+  })
+}
+
 export function useUpdateExpense() {
   const { invalidateAndSync } = useExpensesMutation()
   return useMutation({

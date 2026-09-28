@@ -79,7 +79,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     route: '/planner',
     selectors: ['[data-tutorial="planner-new"]', '[data-tutorial="page-header"]'],
     title: 'Salary planner',
-    body: 'Tap “New plan” to model a job offer or raise after tax. Further down, add your debts to see when you’ll be debt-free.',
+    body: 'Tap “New plan” to sketch the life you want — expenses and what you’d like left over — and Loot tells you the salary it needs. Further down, add your debts to see when you’ll be debt-free.',
   },
   {
     id: 'compare',

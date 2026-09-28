@@ -3,42 +3,56 @@ import type { PlannerPlan } from './types'
 
 export interface PlanTotals {
   planId: string
-  totalGross: number
-  totalNet: number
-  totalExpenses: number
-  totalLeftover: number
   phaseCount: number
-  /** Average monthly leftover per phase — comparable between plans with different numbers of phases. */
-  avgLeftover: number
+  /** Gross salary / month the most demanding phase needs. */
+  peakGross: number
+  /** Take-home / month the most demanding phase needs. */
+  peakNet: number
+  /** Average gross / month needed across phases. */
+  avgRequiredGross: number
+  /** Average monthly-equivalent spend across phases. */
+  avgExpenses: number
+  /** Average leftover target across phases. */
+  avgLeftoverTarget: number
 }
 
 export function computePlanTotals(plan: PlannerPlan): PlanTotals {
-  let totalGross = 0
-  let totalNet = 0
-  let totalExpenses = 0
-  let totalLeftover = 0
-  for (const phase of plan.phases) {
-    const computed = computePhase(phase, plan.tax_rate_pct)
-    totalGross += phase.gross_income
-    totalNet += computed.netIncome
-    totalExpenses += computed.totalExpenses
-    totalLeftover += computed.leftover
+  const computed = plan.phases.map((p) => computePhase(p, plan.tax_rate_pct))
+  const n = computed.length
+  const avg = (pick: (c: (typeof computed)[number]) => number) => (n > 0 ? computed.reduce((s, c) => s + pick(c), 0) / n : 0)
+  return {
+    planId: plan.id,
+    phaseCount: n,
+    peakGross: n > 0 ? Math.max(...computed.map((c) => c.requiredGross)) : 0,
+    peakNet: n > 0 ? Math.max(...computed.map((c) => c.requiredNet)) : 0,
+    avgRequiredGross: avg((c) => c.requiredGross),
+    avgExpenses: avg((c) => c.totalExpenses),
+    avgLeftoverTarget: avg((c) => c.leftoverTarget),
   }
-  const phaseCount = plan.phases.length
-  return { planId: plan.id, totalGross, totalNet, totalExpenses, totalLeftover, phaseCount, avgLeftover: phaseCount > 0 ? totalLeftover / phaseCount : 0 }
 }
 
-export type CompareMetric = 'tax_rate_pct' | 'totalGross' | 'totalNet' | 'totalExpenses' | 'totalLeftover' | 'avgLeftover'
+export type CompareMetric = 'tax_rate_pct' | 'peakGross' | 'peakNet' | 'avgRequiredGross' | 'avgExpenses' | 'avgLeftoverTarget'
 
-/** true = lower value wins (tax rate, expenses); false = higher value wins. */
+/** true = lower value wins (a cheaper life, less tax); false = higher value wins (more kept each month). */
 export const METRIC_LOWER_IS_BETTER: Record<CompareMetric, boolean> = {
   tax_rate_pct: true,
-  totalGross: false,
-  totalNet: false,
-  totalExpenses: true,
-  totalLeftover: false,
-  avgLeftover: false,
+  peakGross: true,
+  peakNet: true,
+  avgRequiredGross: true,
+  avgExpenses: true,
+  avgLeftoverTarget: false,
 }
+
+/** Rows shown on the compare page and in its export, in order. */
+export const COMPARE_ROWS: { key: CompareMetric | 'phaseCount'; label: string }[] = [
+  { key: 'peakGross', label: 'Salary needed (gross/mo)' },
+  { key: 'peakNet', label: 'Take-home needed' },
+  { key: 'avgRequiredGross', label: 'Avg. salary per phase' },
+  { key: 'avgExpenses', label: 'Avg. monthly spend' },
+  { key: 'avgLeftoverTarget', label: 'Avg. leftover target' },
+  { key: 'tax_rate_pct', label: 'Effective tax rate' },
+  { key: 'phaseCount', label: 'Phases' },
+]
 
 /** Returns the plan id(s) with the winning value for a metric (ties all win). */
 export function winningPlanIds(values: { planId: string; value: number }[], lowerIsBetter: boolean): Set<string> {

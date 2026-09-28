@@ -1,3 +1,4 @@
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Calculator, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -5,25 +6,24 @@ import { DebtForm } from '@/components/planner/DebtForm'
 import { DebtRow } from '@/components/planner/DebtRow'
 import { DebtStrategyComparison } from '@/components/planner/DebtStrategyComparison'
 import { PlanCard } from '@/components/planner/PlanCard'
-import { PlanEditor } from '@/components/planner/PlanEditor'
+import { PlanWorkspace } from '@/components/planner/PlanWorkspace'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { InlineSheet } from '@/components/ui/InlineSheet'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useCreateDebt, useDebts, useDeleteDebt, useUpdateDebt } from '@/hooks/useDebts'
-import {
-  useCreatePlannerPlan,
-  useDeletePlannerPlan,
-  usePlannerPlans,
-  useUpdatePlannerPlan,
-} from '@/hooks/usePlannerPlans'
+import { useDeletePlannerPlan, usePlannerPlans } from '@/hooks/usePlannerPlans'
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
 import type { Debt, PlannerPlan } from '@/lib/types'
 
 export function PlannerPage() {
   const { data: plans = [], isLoading: plansLoading } = usePlannerPlans()
-  const createPlan = useCreatePlannerPlan()
-  const updatePlan = useUpdatePlannerPlan()
   const deletePlan = useDeletePlannerPlan()
+  const { plan: openPlanId } = useSearch({ from: '/_app/planner' })
+  const navigate = useNavigate({ from: '/planner' })
+  const openPlan = (id: string | 'new' | undefined) => {
+    void navigate({ search: id ? { plan: id } : {} })
+    window.scrollTo({ top: 0 })
+  }
 
   const { data: debts = [], isLoading: debtsLoading } = useDebts()
   const createDebt = useCreateDebt()
@@ -33,12 +33,10 @@ export function PlannerPage() {
   const { data: profile } = useProfile()
   const updateProfile = useUpdateProfile()
 
-  const [planModal, setPlanModal] = useState<'new' | PlannerPlan | null>(null)
   const [debtModal, setDebtModal] = useState<'new' | Debt | null>(null)
   const [planToDelete, setPlanToDelete] = useState<PlannerPlan | null>(null)
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null)
   const [extraPayment, setExtraPayment] = useState(profile?.debt_extra_payment ?? 0)
-  const planFormRef = useRef<HTMLElement>(null)
   const debtFormRef = useRef<HTMLElement>(null)
 
   // The saved extra payment may arrive after this page mounts; adopt it once, without overwriting typing.
@@ -51,21 +49,42 @@ export function PlannerPage() {
   }, [profile])
 
   useEffect(() => {
-    if (planModal) planFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [planModal])
-
-  useEffect(() => {
     if (debtModal) debtFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [debtModal])
+
+  if (openPlanId) {
+    const plan = openPlanId === 'new' ? undefined : plans.find((p) => p.id === openPlanId)
+    if (openPlanId !== 'new' && !plan) {
+      if (plansLoading) return <div className="skeleton h-[480px] rounded-2xl" />
+      return (
+        <div className="card-elevated flex flex-col items-center gap-3 py-14 text-center">
+          <h2 className="text-[20px] font-bold tracking-[-0.02em]">That plan isn&apos;t here any more</h2>
+          <p className="text-[14px] text-muted-foreground">It may have been deleted.</p>
+          <button type="button" onClick={() => openPlan(undefined)} className="btn btn-primary">
+            Back to all plans
+          </button>
+        </div>
+      )
+    }
+    return (
+      <PlanWorkspace
+        key={plan?.id ?? 'new'}
+        plan={plan}
+        plans={plans}
+        onClose={() => openPlan(undefined)}
+        onOpen={(id) => openPlan(id)}
+      />
+    )
+  }
 
   return (
     <div className="animate-enter space-y-8">
       <PageHeader
         eyebrow="Planning"
         title="Salary planner"
-        subtitle="Model salary scenarios and plan your way out of debt."
+        subtitle="Sketch the life you want and see the salary it needs — then plan your way out of debt."
         actions={
-          <button type="button" onClick={() => setPlanModal('new')} className="btn btn-primary" data-tutorial="planner-new">
+          <button type="button" onClick={() => openPlan('new')} className="btn btn-primary" data-tutorial="planner-new">
             <Plus size={16} strokeWidth={2.4} /> New plan
           </button>
         }
@@ -74,39 +93,9 @@ export function PlannerPage() {
       <section className="space-y-4">
         <div className="px-1">
           <h2 className="text-[22px] font-bold tracking-[-0.02em]">Salary plans</h2>
-          <p className="text-[13.5px] text-muted-foreground">What each scenario leaves you with every month, after tax and costs.</p>
+          <p className="text-[13.5px] text-muted-foreground">What each version of your life would need you to earn, before and after tax.</p>
         </div>
 
-        {planModal && (
-          <InlineSheet ref={planFormRef} title={planModal === 'new' ? 'New plan' : `Edit ${planModal.name}`} onClose={() => setPlanModal(null)} narrow={false}>
-            <PlanEditor
-              key={planModal === 'new' ? 'new' : planModal.id}
-              initial={planModal === 'new' ? undefined : planModal}
-              isSubmitting={createPlan.isPending || updatePlan.isPending}
-              onCancel={() => setPlanModal(null)}
-              onSubmit={(values) => {
-                if (planModal === 'new') {
-                  createPlan.mutate(values, {
-                    onSuccess: () => {
-                      setPlanModal(null)
-                      toast.success(`${values.name} created`)
-                    },
-                  })
-                } else {
-                  updatePlan.mutate(
-                    { id: planModal.id, patch: values },
-                    {
-                      onSuccess: () => {
-                        setPlanModal(null)
-                        toast.success('Plan saved')
-                      },
-                    },
-                  )
-                }
-              }}
-            />
-          </InlineSheet>
-        )}
 
         {plansLoading ? (
           <div className="skeleton h-40 rounded-2xl" />
@@ -118,10 +107,10 @@ export function PlannerPage() {
             <div className="space-y-1.5">
               <h3 className="text-[20px] font-bold tracking-[-0.02em]">No plans yet</h3>
               <p className="max-w-sm text-[14px] text-muted-foreground">
-                Model a new job offer, a raise, or a career change — phase by phase.
+                Sketch a move, a new city or a career change — phase by phase — and see the salary it takes.
               </p>
             </div>
-            <button type="button" onClick={() => setPlanModal('new')} className="btn btn-primary">
+            <button type="button" onClick={() => openPlan('new')} className="btn btn-primary">
               <Plus size={16} strokeWidth={2.4} /> Create a plan
             </button>
           </div>
@@ -131,7 +120,8 @@ export function PlannerPage() {
               <PlanCard
                 key={plan.id}
                 plan={plan}
-                onEdit={() => setPlanModal(plan)}
+                currentNet={profile?.net_income ?? 0}
+                onOpen={() => openPlan(plan.id)}
                 onDelete={() => setPlanToDelete(plan)}
               />
             ))}

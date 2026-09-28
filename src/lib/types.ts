@@ -208,11 +208,21 @@ export interface PlannerExpenseItem {
   amount: number
   /** Optional expense category (same 25 as expenses) — shown in exports. Stored inside the phases jsonb. */
   category?: string
+  /** How often it's paid. Missing on plans saved before 2026-09-28 → treated as 'monthly'. */
+  frequency?: ExpenseFrequency
 }
 
 export interface PlannerPhase {
   name: string
+  /**
+   * Optional salary to test this phase against (gross / month). 0 = not set — the phase is then compared with the
+   * user's current take-home. Plans made before the target-driven planner always have it.
+   */
   gross_income: number
+  /** What the user wants left over each month in this phase, on top of expenses. Missing → 0. */
+  leftover_target?: number
+  /** Optional length of the phase in months — once-off costs are spread over it. Missing/null → not spread. */
+  months?: number | null
   expenses: PlannerExpenseItem[]
 }
 

@@ -515,6 +515,13 @@ button {
 }
 
 /* Top bar material (mobile) — scroll-edge style, no hard divider */
+/* Mobile menu sheet — opaque grouped background (like iOS Settings) so every row reads clearly in both themes. */
+.mobile-menu-sheet {
+  background: var(--bg);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.25);
+  border-left: 0.5px solid var(--border);
+}
+
 .topbar-material {
   background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 78%, transparent), color-mix(in srgb, var(--bg) 40%, transparent));
   backdrop-filter: blur(20px) saturate(180%);

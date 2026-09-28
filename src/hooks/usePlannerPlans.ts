@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { normalisePhase } from '@/lib/planner-math'
 import { supabase } from '@/lib/supabase'
 import type { NewPlannerPlan, PlannerPlan } from '@/lib/types'
 import { useAuth } from './useAuth'
@@ -18,7 +19,8 @@ export function usePlannerPlans() {
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data as PlannerPlan[]
+      // Plans saved before the target-driven planner lack the newer optional phase fields.
+      return (data as PlannerPlan[]).map((p) => ({ ...p, phases: (p.phases ?? []).map(normalisePhase) }))
     },
     enabled: Boolean(user?.id),
     staleTime: 10_000,

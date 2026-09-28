@@ -11,8 +11,8 @@
 import type { ReactNode } from 'react'
 import { categoryColor, categoryLabel } from '@/lib/categories'
 import { monthLabel } from '@/lib/money'
-import { computePhase } from '@/lib/planner-math'
-import { computePlanTotals, METRIC_LOWER_IS_BETTER, winningPlanIds, type CompareMetric } from '@/lib/plan-compare'
+import { computePhase, itemMonthly, peakPhaseIndex } from '@/lib/planner-math'
+import { COMPARE_ROWS, computePlanTotals, METRIC_LOWER_IS_BETTER, winningPlanIds, type CompareMetric } from '@/lib/plan-compare'
 import type { MonthlySnapshot, PlannerPlan } from '@/lib/types'
 import { getActiveCurrency } from '@/lib/utils'
 
@@ -130,12 +130,13 @@ function Notes({ text }: { text: string }) {
 
 /* ---------- Salary plan ---------- */
 
-export function PlanExportDoc({ plan }: { plan: PlannerPlan }) {
-  const totals = computePlanTotals(plan)
+const FREQ_LABEL: Record<string, string> = { monthly: 'Monthly', weekly: 'Weekly', annual: 'Annual', 'once-off': 'Once-off' }
+
+export function PlanExportDoc({ plan, currentNet = 0 }: { plan: PlannerPlan; currentNet?: number }) {
   const phases = plan.phases.map((p) => ({ phase: p, c: computePhase(p, plan.tax_rate_pct) }))
   const multi = phases.length > 1
-  const per = (n: number) => (multi ? n / phases.length : n)
-  const avgNote = multi ? `Average across ${phases.length} phases` : undefined
+  const peak = peakPhaseIndex(plan.phases, plan.tax_rate_pct)
+  const top = peak >= 0 ? phases[peak].c : null
 
   return (
     <Doc
@@ -143,41 +144,56 @@ export function PlanExportDoc({ plan }: { plan: PlannerPlan }) {
       title={plan.name}
       meta={`${phases.length} phase${multi ? 's' : ''} · ${plan.tax_rate_pct}% effective tax · Generated ${today()}`}
       headline={{
-        label: multi ? 'Left over / mo (average)' : 'Left over / mo',
-        value: docMoney(totals.avgLeftover),
-        sub: `${docMoney(totals.avgLeftover * 12)} a year`,
-        tone: totals.avgLeftover < 0 ? 'alert' : 'positive',
+        label: multi ? 'Salary needed (highest phase)' : 'Salary needed',
+        value: docMoney(top?.requiredGross ?? 0),
+        sub: `gross / month · ${docMoney(top?.requiredAnnualGross ?? 0)} a year`,
+        tone: 'positive',
       }}
-      disclaimer="Estimate using a flat effective tax rate. Real payroll varies with benefits and deductions."
+      disclaimer="Rough estimate at a flat effective tax rate. Real payroll deductions vary with UIF, pension, medical aid and bracket edges."
     >
       <StatCards
         items={[
-          { label: 'Gross income / mo', value: docMoney(per(totals.totalGross)), sub: avgNote ?? 'Before tax' },
-          { label: 'Take home / mo', value: docMoney(per(totals.totalNet)), sub: `After ${plan.tax_rate_pct}% tax` },
-          { label: 'Expenses / mo', value: docMoney(per(totals.totalExpenses)), sub: avgNote ?? 'Everything in this plan' },
+          { label: 'Take-home needed / mo', value: docMoney(top?.requiredNet ?? 0), sub: multi ? `In ${phases[peak]?.phase.name}` : 'Expenses + leftover target' },
+          { label: 'Monthly expenses', value: docMoney(top?.totalExpenses ?? 0), sub: 'Monthly equivalent' },
+          { label: 'Leftover target / mo', value: docMoney(top?.leftoverTarget ?? 0), sub: 'On top of expenses' },
         ]}
       />
 
+      {currentNet > 0 && top && top.requiredNet > 0 && (
+        <section className="card !p-5">
+          <Eyebrow>Compared with today</Eyebrow>
+          <p className="mt-2 text-[14px] leading-[1.5]">
+            {currentNet >= top.requiredNet
+              ? `Your current take-home of ${docMoney(currentNet)} already covers this by ${docMoney(currentNet - top.requiredNet)} a month.`
+              : `Your current take-home of ${docMoney(currentNet)} is ${docMoney(top.requiredNet - currentNet)} a month short of this.`}
+          </p>
+        </section>
+      )}
+
       {phases.map(({ phase, c }, i) => {
-        const items = [...phase.expenses].filter((e) => e.name || e.amount).sort((a, b) => b.amount - a.amount)
+        const items = [...phase.expenses]
+          .filter((e) => e.name || e.amount)
+          .map((e) => ({ e, monthly: itemMonthly(e, phase.months) }))
+          .sort((a, b) => b.monthly - a.monthly || b.e.amount - a.e.amount)
         return (
           <section key={i} className="card !p-6">
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0">
-                <Eyebrow>Phase {i + 1}</Eyebrow>
+                <Eyebrow>Phase {i + 1}{phase.months ? ` · ${phase.months} months` : ''}</Eyebrow>
                 <h2 className="mt-1.5 text-[20px] leading-[1.25] font-bold break-words">{phase.name || `Phase ${i + 1}`}</h2>
                 <p className="tnum mt-1 text-[12.5px] leading-[1.4] text-muted-foreground">
-                  Gross {docMoney(phase.gross_income)} · Take home {docMoney(c.netIncome)}
+                  Spend {docMoney(c.totalExpenses)} + keep {docMoney(c.leftoverTarget)} = take home {docMoney(c.requiredNet)}
                 </p>
+                {c.hasSalary && (
+                  <p className="tnum mt-0.5 text-[12.5px] leading-[1.4] text-muted-foreground">
+                    Tested salary {docMoney(phase.gross_income)} takes home {docMoney(c.netIncome)} ({c.netIncome >= c.requiredNet ? `${docMoney(c.netIncome - c.requiredNet)} spare` : `${docMoney(c.requiredNet - c.netIncome)} short`})
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right">
-                <p className={`tnum text-[22px] leading-[1.25] font-bold ${c.leftover < 0 ? 'text-alert' : 'text-primary'}`}>
-                  {docMoney(c.leftover)}
-                </p>
-                <p className="text-[12px] leading-[1.4] font-medium text-muted-foreground">left each month</p>
-                <p className="tnum mt-0.5 text-[12px] leading-[1.4] text-muted-foreground">
-                  {docMoney(c.totalExpenses)} spent · {c.netIncome > 0 ? Math.round((c.totalExpenses / c.netIncome) * 100) : 0}% of take home
-                </p>
+                <p className="tnum text-[22px] leading-[1.25] font-bold text-primary">{docMoney(c.requiredGross)}</p>
+                <p className="text-[12px] leading-[1.4] font-medium text-muted-foreground">gross needed / month</p>
+                <p className="tnum mt-0.5 text-[12px] leading-[1.4] text-muted-foreground">{docMoney(c.requiredAnnualGross)} a year</p>
               </div>
             </div>
 
@@ -187,15 +203,17 @@ export function PlanExportDoc({ plan }: { plan: PlannerPlan }) {
                   <tr>
                     <Th>Item</Th>
                     <Th>Category</Th>
+                    <Th>How often</Th>
+                    <Th right>Amount</Th>
                     <Th right>Monthly</Th>
                     <Th right>Share</Th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((e, j) => (
+                  {items.map(({ e, monthly }, j) => (
                     <tr key={j} className="border-t border-hairline">
-                      <td className="py-2.5 pr-4">{e.name || 'Unnamed'}</td>
-                      <td className="py-2.5 pr-4 text-muted-foreground">
+                      <td className="py-2.5 pr-3">{e.name || 'Unnamed'}</td>
+                      <td className="py-2.5 pr-3 text-muted-foreground">
                         {e.category ? (
                           <>
                             <Dot color={categoryColor(e.category)} />
@@ -205,19 +223,32 @@ export function PlanExportDoc({ plan }: { plan: PlannerPlan }) {
                           '—'
                         )}
                       </td>
-                      <td className="tnum py-2.5 text-right font-semibold">{docMoney(e.amount)}</td>
-                      <td className="tnum py-2.5 pl-4 text-right text-muted-foreground">
-                        {c.totalExpenses > 0 ? `${Math.round((e.amount / c.totalExpenses) * 100)}%` : '—'}
+                      <td className="py-2.5 pr-3 text-muted-foreground">{FREQ_LABEL[e.frequency ?? 'monthly']}</td>
+                      <td className="tnum py-2.5 text-right">{docMoney(e.amount)}</td>
+                      <td className="tnum py-2.5 pl-3 text-right font-semibold">
+                        {monthly > 0 ? docMoney(monthly) : 'Up front'}
+                      </td>
+                      <td className="tnum py-2.5 pl-3 text-right text-muted-foreground">
+                        {c.totalExpenses > 0 && monthly > 0 ? `${Math.round((monthly / c.totalExpenses) * 100)}%` : '—'}
                       </td>
                     </tr>
                   ))}
                   <tr className="border-t border-border">
-                    <td className="pt-3 font-semibold" colSpan={2}>
-                      Total
+                    <td className="pt-3 font-semibold" colSpan={4}>
+                      Monthly total
                     </td>
-                    <td className="tnum pt-3 text-right font-bold">{docMoney(c.totalExpenses)}</td>
-                    <td className="tnum pt-3 pl-4 text-right text-muted-foreground">100%</td>
+                    <td className="tnum pt-3 pl-3 text-right font-bold">{docMoney(c.totalExpenses)}</td>
+                    <td className="tnum pt-3 pl-3 text-right text-muted-foreground">100%</td>
                   </tr>
+                  {c.upfront > 0 && (
+                    <tr>
+                      <td className="pt-1.5 text-muted-foreground" colSpan={4}>
+                        Once-off, paid up front
+                      </td>
+                      <td className="tnum pt-1.5 pl-3 text-right font-semibold">{docMoney(c.upfront)}</td>
+                      <td />
+                    </tr>
+                  )}
                 </tbody>
               </table>
             ) : (
@@ -234,32 +265,24 @@ export function PlanExportDoc({ plan }: { plan: PlannerPlan }) {
 
 /* ---------- Plan comparison ---------- */
 
-const COMPARE_ROWS: { key: CompareMetric | 'phaseCount'; label: string }[] = [
-  { key: 'tax_rate_pct', label: 'Effective tax rate' },
-  { key: 'phaseCount', label: 'Phases' },
-  { key: 'totalGross', label: 'Total gross income' },
-  { key: 'totalNet', label: 'Total take home' },
-  { key: 'totalExpenses', label: 'Total expenses' },
-  { key: 'totalLeftover', label: 'Total left over' },
-  { key: 'avgLeftover', label: 'Left over / mo (average)' },
-]
-const SUMMED = new Set(['totalGross', 'totalNet', 'totalExpenses', 'totalLeftover'])
-
 export function CompareExportDoc({ plans }: { plans: PlannerPlan[] }) {
   const totals = new Map(plans.map((p) => [p.id, computePlanTotals(p)]))
   const value = (p: PlannerPlan, key: (typeof COMPARE_ROWS)[number]['key']) =>
     key === 'tax_rate_pct' ? p.tax_rate_pct : (totals.get(p.id)?.[key] ?? 0)
   const fmt = (key: (typeof COMPARE_ROWS)[number]['key'], v: number) =>
     key === 'tax_rate_pct' ? `${v}%` : key === 'phaseCount' ? String(v) : docMoney(v)
-  const samePhaseCount = new Set(plans.map((p) => p.phases.length)).size === 1
-  const best = [...plans].sort((a, b) => (totals.get(b.id)?.avgLeftover ?? 0) - (totals.get(a.id)?.avgLeftover ?? 0))[0]
+  const cheapest = [...plans].sort((a, b) => (totals.get(a.id)?.peakGross ?? 0) - (totals.get(b.id)?.peakGross ?? 0))[0]
 
   return (
     <Doc
       kind="Plan comparison"
       title={plans.map((p) => p.name).join(' vs ')}
       meta={`${plans.length} plans · Generated ${today()}`}
-      headline={best ? { label: 'Leaves the most each month', value: best.name, sub: `${docMoney(totals.get(best.id)?.avgLeftover ?? 0)} / mo`, tone: 'positive' } : undefined}
+      headline={
+        cheapest
+          ? { label: 'Needs the lowest salary', value: cheapest.name, sub: `${docMoney(totals.get(cheapest.id)?.peakGross ?? 0)} gross / mo`, tone: 'positive' }
+          : undefined
+      }
       disclaimer="Estimates using each plan's flat effective tax rate. Green marks the better number in each row."
     >
       <section className="card !p-6">
@@ -277,20 +300,13 @@ export function CompareExportDoc({ plans }: { plans: PlannerPlan[] }) {
           <tbody>
             {COMPARE_ROWS.map((row) => {
               const vals = plans.map((p) => ({ planId: p.id, value: value(p, row.key) }))
-              const winners =
-                row.key === 'phaseCount' || (SUMMED.has(row.key) && !samePhaseCount)
-                  ? new Set<string>()
-                  : winningPlanIds(vals, METRIC_LOWER_IS_BETTER[row.key as CompareMetric])
+              const winners = row.key === 'phaseCount' ? new Set<string>() : winningPlanIds(vals, METRIC_LOWER_IS_BETTER[row.key as CompareMetric])
               return (
                 <tr key={row.key} className="border-t border-hairline">
                   <td className="py-3 text-muted-foreground">{row.label}</td>
                   {vals.map(({ planId, value: v }) => (
                     <td key={planId} className="tnum py-3 pl-4 text-right font-semibold">
-                      {winners.has(planId) && winners.size < plans.length ? (
-                        <span className="text-primary">{fmt(row.key, v)}</span>
-                      ) : (
-                        fmt(row.key, v)
-                      )}
+                      {winners.has(planId) && winners.size < plans.length ? <span className="text-primary">{fmt(row.key, v)}</span> : fmt(row.key, v)}
                     </td>
                   ))}
                 </tr>
@@ -313,10 +329,10 @@ export function CompareExportDoc({ plans }: { plans: PlannerPlan[] }) {
                     <div className="min-w-0">
                       <p className="font-semibold break-words">{ph.name || `Phase ${i + 1}`}</p>
                       <p className="tnum text-[12px] text-muted-foreground">
-                        {docMoney(c.netIncome)} take home · {docMoney(c.totalExpenses)} out
+                        {docMoney(c.totalExpenses)} spend · {docMoney(c.leftoverTarget)} to keep
                       </p>
                     </div>
-                    <p className={`tnum shrink-0 font-semibold ${c.leftover < 0 ? 'text-alert' : 'text-primary'}`}>{docMoney(c.leftover)}</p>
+                    <p className="tnum shrink-0 font-semibold text-primary">{docMoney(c.requiredGross)}</p>
                   </div>
                 )
               })}

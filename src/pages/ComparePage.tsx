@@ -5,21 +5,10 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { usePlannerPlans } from '@/hooks/usePlannerPlans'
 import { CompareExportDoc } from '@/components/export/ExportDocs'
 import { exportDocument } from '@/lib/export'
-import { computePlanTotals, METRIC_LOWER_IS_BETTER, winningPlanIds, type CompareMetric } from '@/lib/plan-compare'
+import { COMPARE_ROWS, computePlanTotals, METRIC_LOWER_IS_BETTER, winningPlanIds, type CompareMetric } from '@/lib/plan-compare'
 import { formatCurrency } from '@/lib/utils'
 
-const ROWS: { key: CompareMetric | 'phaseCount'; label: string }[] = [
-  { key: 'tax_rate_pct', label: 'Effective tax rate' },
-  { key: 'phaseCount', label: 'Phases' },
-  { key: 'totalGross', label: 'Total gross income' },
-  { key: 'totalNet', label: 'Total net income' },
-  { key: 'totalExpenses', label: 'Total expenses' },
-  { key: 'totalLeftover', label: 'Total leftover' },
-  { key: 'avgLeftover', label: 'Avg. leftover per phase' },
-]
-
-/** Rows that add up every phase — only fair to rank when the plans have the same number of phases. */
-const SUMMED_ROWS = new Set(['totalGross', 'totalNet', 'totalExpenses', 'totalLeftover'])
+const ROWS = COMPARE_ROWS
 
 export function ComparePage() {
   const { data: plans = [], isLoading } = usePlannerPlans()
@@ -112,7 +101,7 @@ export function ComparePage() {
       ) : (
         <div className="space-y-3">
           <div className="card-elevated overflow-x-auto sm:p-6">
-            <table className="w-full min-w-[480px] border-collapse text-[14.5px]">
+            <table className={`w-full border-collapse text-[13.5px] sm:text-[14.5px] ${selectedPlans.length > 2 ? 'min-w-[520px]' : ''}`}>
               <thead>
                 <tr>
                   <th className="pb-3 text-left text-[13px] font-medium text-muted-foreground">Metric</th>
@@ -126,9 +115,8 @@ export function ComparePage() {
               <tbody>
                 {ROWS.map((row) => {
                   const values = selectedPlans.map((p) => ({ planId: p.id, value: rowValue(p.id, row.key) }))
-                  const comparable = !SUMMED_ROWS.has(row.key) || new Set(selectedPlans.map((p) => p.phases.length)).size === 1
-                  const winners =
-                    row.key === 'phaseCount' || !comparable
+                                    const winners =
+                    row.key === 'phaseCount'
                       ? new Set<string>()
                       : winningPlanIds(values, METRIC_LOWER_IS_BETTER[row.key as CompareMetric])
                   return (
@@ -153,12 +141,6 @@ export function ComparePage() {
             </table>
           </div>
 
-          {new Set(selectedPlans.map((p) => p.phases.length)).size > 1 && (
-            <p className="px-1 text-[13px] text-muted-foreground">
-              These plans have different numbers of phases, so the “Total” rows add up different amounts of time — use the
-              average row to see which plan leaves more each month.
-            </p>
-          )}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="flex items-center gap-2 px-1 text-[13px] text-muted-foreground">

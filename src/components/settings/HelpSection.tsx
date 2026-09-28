@@ -11,7 +11,7 @@ const GUIDE: Record<string, string> = {
   '/goals': 'Savings targets with monthly contributions, a 24-month timeline and a shortfall check.',
   '/checker': 'Ask “can I afford this?” — once-off or monthly — and get a straight answer.',
   '/statement': 'Upload a bank statement (PDF, CSV or OFX) for an instant category breakdown. Parsed in your browser.',
-  '/planner': 'Multi-phase salary plans and a debt-payoff planner (avalanche vs snowball).',
+  '/planner': 'Sketch the life you want phase by phase and see the salary it needs, plus a debt-payoff planner (avalanche vs snowball).',
   '/compare': 'Put two to four saved plans side by side.',
   '/tax': 'SARS estimate, provisional tax, deductions, key dates, eFiling guide and glossary.',
   '/settings': 'Your profile, income, preferences, household and data.',

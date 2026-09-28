@@ -1,0 +1,24 @@
+— X / Threads —
+Your bank app says R 29,800.
+R 22,917 of that is already spoken for.
+
+I built Loot so you know what's actually yours to spend before payday. Rands-first, SARS tax brackets built in, and a "Can I afford it?" check that gives you a straight answer.
+
+Know your loot. 🟢
+
+— LinkedIn —
+I've been building Loot, a personal finance app for South Africans.
+
+The idea is simple: your bank balance includes money that's already spoken for (rent, the car, debit orders). Loot works out the number that's actually yours: available to spend this month and per day until payday.
+
+What's in it:
+• Summary: your real number, every day
+• Can I afford it?: Comfortable, Tight or Not recommended, worked out from your real numbers
+• Salary planner and a Tax centre that uses SARS brackets
+• Statements, goals and a Loot Score for money habits
+• Runs on the web and installs to your home screen
+
+Know your number before you spend it.
+
+— Short caption (IG / TikTok / Reels) —
+Your bank balance is lying to you. Loot shows what's actually yours. 🇿🇦 #personalfinance #southafrica #buildinpublic
