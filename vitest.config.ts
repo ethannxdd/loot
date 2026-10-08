@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
     // Dates are built from local components everywhere; pin the zone to one that is ahead of UTC so any
     // accidental toISOString() date maths would shift a day and fail loudly.
     globalSetup: ['./vitest.global-setup.ts'],

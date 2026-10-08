@@ -7,6 +7,7 @@ import { toast, Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import { useAuth } from '@/hooks/useAuth'
+import { startPwa } from '@/lib/pwa'
 import { queryClient, router } from './router'
 import './styles.css'
 
@@ -63,3 +64,6 @@ createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </StrictMode>,
 )
+
+// Service worker, install prompt and offline notice (see src/lib/pwa.ts).
+startPwa()

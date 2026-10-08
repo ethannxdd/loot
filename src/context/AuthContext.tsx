@@ -15,6 +15,8 @@ export interface AuthContextValue {
     password: string,
   ) => Promise<{ error: string | null; needsConfirmation: boolean }>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
+  /** Signs in with the one-time code from the sign-in email (the installed app can't receive the link). */
+  verifyEmailCode: (email: string, code: string) => Promise<{ error: string | null }>
   signInWithGoogle: () => Promise<{ error: string | null }>
   /** Sends a password-reset email. */
   resetPassword: (email: string) => Promise<{ error: string | null }>
@@ -109,6 +111,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { emailRedirectTo: redirectTo },
       })
       return { error: error?.message ?? null }
+    },
+    async verifyEmailCode(email, code) {
+      const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
+      if (!error) return { error: null }
+      return {
+        error: /expired|invalid/i.test(error.message)
+          ? 'That code is wrong or has expired. Check the latest email, or send a new one.'
+          : error.message,
+      }
     },
     async signInWithGoogle() {
       const { error } = await supabase.auth.signInWithOAuth({

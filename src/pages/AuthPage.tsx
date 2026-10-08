@@ -5,6 +5,8 @@ import { AuthShell } from '@/components/auth/AuthShell'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Segmented } from '@/components/ui/Segmented'
 import { useAuth } from '@/hooks/useAuth'
+import { usePublicFeature } from '@/hooks/useFeatures'
+import { isStandalone } from '@/lib/pwa'
 
 type Mode = 'signin' | 'signup' | 'forgot'
 type Method = 'password' | 'magic'
@@ -14,11 +16,22 @@ export function AuthPage() {
     signInWithPassword,
     signUpWithPassword,
     signInWithMagicLink,
+    verifyEmailCode,
     signInWithGoogle,
     resetPassword,
   } = useAuth()
 
   const [method, setMethod] = useState<Method>('password')
+  // In the installed app (iOS especially) email links open in the browser, not here, so lead with the code.
+  const [standalone] = useState(isStandalone)
+  // Email codes need {{ .Token }} in the Supabase email templates, and editing templates needs custom SMTP
+  // (not available on the free plan without it). Until then, the installed app signs in with a password only.
+  // Switch on with the public `email_codes` flag (Admin → Feature flags) or VITE_AUTH_EMAIL_CODES=true.
+  const emailCodesFlag = usePublicFeature('email_codes')
+  const emailCodes = emailCodesFlag || import.meta.env.VITE_AUTH_EMAIL_CODES === 'true'
+  const codeMode = standalone && emailCodes
+  const showEmailMethod = !standalone || emailCodes
+  const [code, setCode] = useState('')
   const search = useSearch({ from: '/auth' })
   const [mode, setMode] = useState<Mode>(search.mode === 'signup' ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
@@ -77,7 +90,18 @@ export function AuthPage() {
       setError(authError)
       return
     }
+    setCode('')
     setMagicLinkSent(true)
+  }
+
+  async function handleCodeSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setIsSubmitting(true)
+    const { error: authError } = await verifyEmailCode(email.trim(), code)
+    setIsSubmitting(false)
+    if (authError) setError(authError)
+    // On success the auth state change re-runs the route guards and moves us on.
   }
 
   async function handleGoogle() {
@@ -94,7 +118,9 @@ export function AuthPage() {
 
   const title =
     method === 'magic'
-      ? 'Sign in with a link'
+      ? codeMode
+        ? 'Sign in with a code'
+        : 'Sign in with a link'
       : mode === 'signup'
         ? 'Create your account'
         : mode === 'forgot'
@@ -102,7 +128,9 @@ export function AuthPage() {
           : 'Welcome back'
   const subtitle =
     method === 'magic'
-      ? 'We’ll email you a link. No password needed.'
+      ? codeMode
+        ? 'We’ll email you a code. No password needed.'
+        : 'We’ll email you a link. No password needed.'
       : mode === 'signup'
         ? 'Free, and about five minutes to set up.'
         : mode === 'forgot'
@@ -111,22 +139,32 @@ export function AuthPage() {
 
   return (
     <AuthShell title={title} subtitle={subtitle}>
-      <div className="mb-6">
-        <Segmented
-          full
-          label="Sign-in method"
-          value={method}
-          onChange={(next) => {
-            setMethod(next)
-            setError(null)
-            setMagicLinkSent(false)
-          }}
-          options={[
-            { value: 'password', label: 'Password' },
-            { value: 'magic', label: 'Email link' },
-          ]}
-        />
-      </div>
+      {showEmailMethod ? (
+        <div className="mb-6">
+          <Segmented
+            full
+            label="Sign-in method"
+            value={method}
+            onChange={(next) => {
+              setMethod(next)
+              setError(null)
+              setMagicLinkSent(false)
+            }}
+            options={[
+              { value: 'password', label: 'Password' },
+              { value: 'magic', label: codeMode ? 'Email code' : 'Email link' },
+            ]}
+          />
+        </div>
+      ) : (
+        <p
+          className="mb-6 rounded-2xl bg-fill px-4 py-3 text-[13px] leading-relaxed text-muted-foreground"
+          data-testid="standalone-password-note"
+        >
+          Email sign-in links open in your browser, not in the app, so sign in with your password here. No password yet? Tap{' '}
+          <span className="font-semibold text-foreground">Forgot password?</span> to set one.
+        </p>
+      )}
 
       {method === 'password' && (confirmationSent || resetSent) ? (
         <SentNotice onBack={() => switchMode('signin')}>
@@ -201,10 +239,75 @@ export function AuthPage() {
             </button>
           </p>
         </form>
-      ) : magicLinkSent ? (
+      ) : magicLinkSent && !emailCodes ? (
         <SentNotice onBack={() => setMagicLinkSent(false)} backLabel="Use a different email">
           Check <span className="font-semibold text-foreground">{email}</span> for your sign-in link.
         </SentNotice>
+      ) : magicLinkSent ? (
+        <form onSubmit={handleCodeSubmit} className="space-y-4" data-testid="email-code-form">
+          <div className="card flex flex-col items-center gap-3 px-6 py-6 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-primary/12 text-primary">
+              <Mail size={26} strokeWidth={2} />
+            </span>
+            <p className="text-[15px] leading-relaxed text-muted-foreground">
+              {standalone ? (
+                <>
+                  Enter the code we sent to <span className="font-semibold text-foreground">{email}</span>.
+                </>
+              ) : (
+                <>
+                  Open the link we sent to <span className="font-semibold text-foreground">{email}</span>, or enter the code
+                  from the email.
+                </>
+              )}
+            </p>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="email-code">
+              Code
+            </label>
+            <input
+              id="email-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              required
+              minLength={6}
+              maxLength={10}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123456"
+              className="text-center !text-[22px] font-semibold tracking-[0.3em] tabular-nums"
+            />
+            {standalone && (
+              <p className="mt-1.5 text-[13px] text-muted-foreground">Email links open in your browser, so use the code to sign in here.</p>
+            )}
+          </div>
+          {error && (
+            <p role="alert" className="text-[13px] font-medium text-alert">
+              {error}
+            </p>
+          )}
+          <button type="submit" disabled={isSubmitting || code.length < 6} className="btn btn-primary w-full !min-h-12 !text-[16px]">
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            Sign in
+          </button>
+          <div className="flex items-center justify-center gap-5 text-[14px] font-semibold text-primary">
+            <button
+              type="button"
+              onClick={() => {
+                setMagicLinkSent(false)
+                setError(null)
+              }}
+            >
+              Use a different email
+            </button>
+            <button type="button" onClick={(e) => void handleMagicLinkSubmit(e)} disabled={isSubmitting}>
+              Send a new code
+            </button>
+          </div>
+        </form>
       ) : (
         <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
           <div>
@@ -228,7 +331,7 @@ export function AuthPage() {
           )}
           <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full !min-h-12 !text-[16px]">
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-            Email me a link
+            {codeMode ? 'Email me a code' : 'Email me a link'}
           </button>
         </form>
       )}
@@ -243,7 +346,7 @@ export function AuthPage() {
         <GoogleMark />
         Continue with Google
       </button>
-      {error && (magicLinkSent || confirmationSent || resetSent) && (
+      {error && (confirmationSent || resetSent) && (
         <p role="alert" className="mt-3 text-center text-[13px] font-medium text-alert">
           {error}
         </p>

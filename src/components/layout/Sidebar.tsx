@@ -1,9 +1,10 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { LogOut } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { Glass } from '@/components/ui/Glass'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { Logo } from '@/components/ui/Logo'
+import { useAdminMe } from '@/hooks/useAdmin'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { isActivePath, NAV_GROUPS } from '@/lib/nav'
@@ -20,6 +21,7 @@ export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const settingsActive = isActivePath(pathname, '/settings')
   const reduceMotion = useReducedMotion()
+  const { data: adminMe } = useAdminMe()
 
   return (
     <aside className="sticky top-0 z-20 hidden h-dvh w-[256px] shrink-0 p-3 md:block">
@@ -66,6 +68,13 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {adminMe?.role && (
+        <Link to="/admin" className="nav-item" data-testid="admin-link">
+          <ShieldCheck size={17} strokeWidth={1.8} className="shrink-0" />
+          <span className="truncate">Admin portal</span>
+        </Link>
+      )}
 
       <div
         className={`flex items-center gap-2.5 rounded-2xl p-2 ${settingsActive ? 'glass-droplet' : 'bg-fill'}`}

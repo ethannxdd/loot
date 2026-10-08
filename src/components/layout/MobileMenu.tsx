@@ -1,8 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ChevronRight, LogOut, Menu, X } from 'lucide-react'
+import { ChevronRight, LogOut, Menu, ShieldCheck, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useAdminMe } from '@/hooks/useAdmin'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { isActivePath, NAV_GROUPS } from '@/lib/nav'
@@ -21,6 +22,7 @@ export function MobileMenu() {
   const { data: profile } = useProfile()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const reduceMotion = useReducedMotion()
+  const { data: adminMe } = useAdminMe()
   const closeRef = useRef<HTMLButtonElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
@@ -136,6 +138,22 @@ export function MobileMenu() {
                   </div>
                 </div>
               ))}
+
+              {adminMe?.role && (
+                <div>
+                  <div className="mb-1.5 px-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Admin</div>
+                  <Link
+                    to="/admin"
+                    className="flex min-h-[50px] items-center gap-3 overflow-hidden rounded-2xl bg-surface px-3.5 text-[16px] font-medium text-foreground active:bg-fill"
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-ink text-ink-foreground">
+                      <ShieldCheck size={17} strokeWidth={2} />
+                    </span>
+                    <span className="flex-1">Admin portal</span>
+                    <ChevronRight size={16} strokeWidth={2} className="text-text-subtle" />
+                  </Link>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-hairline px-4 py-3">

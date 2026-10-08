@@ -6,6 +6,7 @@ import { DataSection } from '@/components/settings/DataSection'
 import { FinancialIdentitySection } from '@/components/settings/FinancialIdentitySection'
 import { HelpSection } from '@/components/settings/HelpSection'
 import { HouseholdSection } from '@/components/settings/HouseholdSection'
+import { InstallSection } from '@/components/settings/InstallSection'
 import { IncomeSection } from '@/components/settings/IncomeSection'
 import { PreferencesSection } from '@/components/settings/PreferencesSection'
 import { ProfileSection } from '@/components/settings/ProfileSection'
@@ -37,6 +38,7 @@ export function SettingsPage() {
           <Group label="You">
             <ProfileSection profile={profile} />
             <AppearanceSection />
+            <InstallSection />
           </Group>
           <Group label="Money">
             <IncomeSection profile={profile} />

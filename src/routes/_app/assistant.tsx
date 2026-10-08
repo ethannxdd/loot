@@ -1,12 +1,18 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { featureFlagsQuery } from '@/hooks/useFeatures'
+import { AssistantPage } from '@/pages/AssistantPage'
 
-// Parked (Ethan's call, Sept 2026) — AssistantPage, useAssistant.ts, assistant-context.ts, and
-// the deployed supabase/functions/loot-assistant edge function are all untouched and ready to
-// go. To re-enable: replace this beforeLoad redirect with `component: AssistantPage` again
-// (see the previous version of this file, or LOOT-BUILD-LOG.md's Phase 4 section for the
-// original), and re-link it in AppLayout.tsx / tutorial-steps.ts.
+// The Loot Assistant is behind the `assistant` feature flag (Admin → Feature flags). Without it this page
+// sends you to Summary, exactly as when it was parked.
 export const Route = createFileRoute('/_app/assistant')({
-  beforeLoad: () => {
-    throw redirect({ to: '/dashboard' })
+  beforeLoad: async ({ context }) => {
+    let flags: Record<string, boolean> = {}
+    try {
+      flags = await context.queryClient.ensureQueryData(featureFlagsQuery(context.auth.user?.id))
+    } catch {
+      flags = {}
+    }
+    if (!flags.assistant) throw redirect({ to: '/dashboard' })
   },
+  component: AssistantPage,
 })
