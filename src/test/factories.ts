@@ -1,4 +1,5 @@
 import type { Debt, Expense, SavingsGoal, TaxProfile, TaxYearData } from '@/lib/types'
+import type { SpendEntry } from '@/lib/spending'
 
 let counter = 0
 const id = (prefix: string) => `${prefix}-${++counter}`
@@ -118,6 +119,25 @@ export function makeSnapshot(over: Partial<MonthlySnapshot> = {}): MonthlySnapsh
     close_notes: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
+    ...over,
+  }
+}
+
+export function makeSpendEntry(over: Partial<SpendEntry> = {}): SpendEntry {
+  return {
+    id: id('spend'),
+    user_id: 'u1',
+    amount: 100,
+    merchant: null,
+    note: null,
+    category: 'groceries',
+    spent_at: new Date(2026, 9, 26, 12).toISOString(),
+    source: 'manual',
+    source_id: null,
+    external_hash: null,
+    deleted_at: null,
+    created_at: '2026-10-26T10:00:00Z',
+    updated_at: '2026-10-26T10:00:00Z',
     ...over,
   }
 }

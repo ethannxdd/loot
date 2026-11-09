@@ -5,7 +5,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { Select } from '@/components/ui/Select'
 import { StatStrip } from '@/components/ui/StatStrip'
 import { chartAxisTick, chartTooltipStyle } from '@/lib/chart'
-import { monthLabel } from '@/lib/money'
+import { useMonthLabels } from '@/hooks/useCycle'
 import { formatCurrency } from '@/lib/utils'
 import type { MonthlySnapshot } from '@/lib/types'
 
@@ -26,6 +26,7 @@ function Delta({ value, upIsGood }: { value: number | null; upIsGood: boolean })
 
 export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const [range, setRange] = useState<(typeof RANGES)[number]>('6')
+  const labels = useMonthLabels()
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   if (snapshots.length === 0) {
@@ -34,7 +35,7 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
   const visible = snapshots.slice(-Number(range))
   const chartData = visible.map((s) => ({
-    month: monthLabel(s.month),
+    month: labels.short(s.month),
     disposable: Math.round(s.disposable_income),
     expenses: Math.round(s.total_expenses),
   }))
@@ -47,8 +48,8 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <h2 className="card-title">{monthLabel(current.month)} at a glance</h2>
-        <div className="w-44">
+        <h2 className="card-title">{labels.short(current.month)} at a glance</h2>
+        <div className="w-full min-w-44 sm:w-auto">
           <Select
             value={current.month}
             onValueChange={setSelectedMonth}
@@ -56,7 +57,7 @@ export function OverviewTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
             options={snapshots
               .slice()
               .reverse()
-              .map((s) => ({ value: s.month, label: monthLabel(s.month) + (s.locked_at ? ' · closed' : '') }))}
+              .map((s) => ({ value: s.month, label: labels.long(s.month) + (s.locked_at ? ' · closed' : '') }))}
           />
         </div>
       </div>

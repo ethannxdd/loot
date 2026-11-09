@@ -2,7 +2,8 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Glass } from '@/components/ui/Glass'
-import { isActivePath, MOBILE_TABS } from '@/lib/nav'
+import { useNav } from '@/hooks/useNav'
+import { isActivePath } from '@/lib/nav'
 
 const PAD = 5 // inner padding of the capsule
 const SCRUB_THRESHOLD = 8 // px of movement before a press becomes a scrub
@@ -20,6 +21,7 @@ export function MobileTabBar() {
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
   const navRef = useRef<HTMLElement>(null)
+  const { tabs: MOBILE_TABS } = useNav()
   const activeIndex = Math.max(0, MOBILE_TABS.findIndex((t) => isActivePath(pathname, t.to)))
   const hasActive = MOBILE_TABS.some((t) => isActivePath(pathname, t.to))
 

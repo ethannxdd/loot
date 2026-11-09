@@ -3,7 +3,6 @@ import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useTutorialContext } from '@/context/TutorialContext'
 import { useUpdateProfile } from '@/hooks/useProfile'
-import { TUTORIAL_STEPS } from '@/lib/tutorial-steps'
 
 /** First element matching the selector that is actually on screen (the desktop sidebar is display:none on phones). */
 function findVisible(selector: string): HTMLElement | null {
@@ -22,7 +21,7 @@ const VIEWPORT_MARGIN = 16
  * centred card (no hole) for intro/outro steps or when a step's selector isn't on screen.
  */
 export function TutorialOverlay() {
-  const { active, stepIndex, totalSteps, next, back, close } = useTutorialContext()
+  const { active, stepIndex, totalSteps, steps, next, back, close } = useTutorialContext()
   const updateProfile = useUpdateProfile()
   const [rect, setRect] = useState<DOMRect | null>(null)
   // True while the step's page is loading / its target is being looked for — the card waits instead of flashing.
@@ -30,7 +29,7 @@ export function TutorialOverlay() {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (st) => st.location.pathname })
 
-  const step = TUTORIAL_STEPS[stepIndex]
+  const step = steps[stepIndex]
   const isLast = stepIndex === totalSteps - 1
 
   useEffect(() => {

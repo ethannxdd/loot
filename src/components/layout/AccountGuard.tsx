@@ -1,10 +1,12 @@
 import { Download, Loader2, LogOut, UserX } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { FeedbackPanel } from '@/components/feedback/FeedbackPanel'
 import { Logo } from '@/components/ui/Logo'
 import { useAccountStatus, type AccountStatus } from '@/hooks/useAccountStatus'
 import { useExportData } from '@/hooks/useAccountData'
 import { useAuth } from '@/hooks/useAuth'
+import { useFeature } from '@/hooks/useFeatures'
 import { trackActivity } from '@/lib/activity'
 
 /** `iat` (issued-at, seconds) from a JWT, or 0. */
@@ -53,6 +55,8 @@ export function AccountGuard({ children }: { children: ReactNode }) {
 export function SuspendedScreen({ status }: { status: Pick<AccountStatus, 'reason' | 'suspended_until'> }) {
   const { signOut } = useAuth()
   const exportData = useExportData()
+  // Phase 6 B7: support stays reachable while suspended (the feedback RPCs allow it).
+  const feedback = useFeature('feedback')
   const until = status.suspended_until
     ? new Date(status.suspended_until).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
@@ -99,9 +103,15 @@ export function SuspendedScreen({ status }: { status: Pick<AccountStatus, 'reaso
             <LogOut size={16} />
             Sign out
           </button>
-          <p className="text-[13px] leading-relaxed text-muted-foreground">
-            Think this is a mistake? Contact Loot support and quote the email address you sign in with.
-          </p>
+          {feedback ? (
+            <div className="card text-left">
+              <FeedbackPanel prefill={{ kind: 'question', message: '' }} />
+            </div>
+          ) : (
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
+              Think this is a mistake? Contact Loot support and quote the email address you sign in with.
+            </p>
+          )}
         </div>
       </div>
     </div>

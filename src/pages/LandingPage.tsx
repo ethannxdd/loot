@@ -7,6 +7,8 @@ import {
   CircleCheck,
   FileSearch,
   Gauge,
+  HandCoins,
+  Hourglass,
   Landmark,
   Lock,
   MapPin,
@@ -14,10 +16,13 @@ import {
   Target,
   TriangleAlert,
   Users,
+  Wallet,
+  Wrench,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { ScoreRing } from '@/components/score/ScoreRing'
 import { Logo } from '@/components/ui/Logo'
+import { usePublicFeature } from '@/hooks/useFeatures'
 
 /* Every figure on this page is illustrative and labelled as such — the page shows what the app does, not claims. */
 
@@ -151,9 +156,69 @@ function Tile({ icon: Icon, color, title, body, children, className = '' }: { ic
   )
 }
 
+/**
+ * Phase 6 tiles (Safe to spend, Stokvels, Wishlist, Tools). Behind the public `phase6_landing` flag so the landing page
+ * only advertises them once they're on for everyone (docs/phase-6/ROLLOUT.md).
+ */
+function Phase6Tiles() {
+  return (
+    <>
+      <div className="card flex flex-col gap-4 p-6 sm:col-span-2">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary text-primary-foreground">
+            <Wallet size={18} strokeWidth={2.1} />
+          </span>
+          <div>
+            <h3 className="text-[17px] font-semibold tracking-[-0.01em]">Safe to spend, payday to payday</h3>
+            <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
+              Log a spend in two taps (or let Apple Pay do it) and see what’s really left until payday — with a daily amount that keeps you on track.
+            </p>
+          </div>
+        </div>
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-4" aria-hidden>
+          <div>
+            <p className="text-[12.5px] text-muted-foreground">Oct pay · Safe to spend</p>
+            <p className="tnum text-[34px] leading-none font-bold tracking-[-0.04em]">R 2 294</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">R 76 a day · 30 days to payday</p>
+          </div>
+          <div className="w-full max-w-[220px] space-y-2">
+            {[
+              ['Groceries', 'R 3 003 left', 14, 'var(--chart-4)'],
+              ['Eating out', 'R 280 left', 77, 'var(--chart-5)'],
+            ].map(([l, left, w, c]) => (
+              <div key={l as string}>
+                <p className="flex justify-between text-[12px] text-muted-foreground"><span>{l}</span><span>{left}</span></p>
+                <div className="h-2 rounded-full bg-fill"><div className="h-full rounded-full" style={{ width: `${w}%`, background: c as string }} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <Tile icon={HandCoins} color="var(--chart-1)" title="Stokvels" body="Track your contributions and know exactly when your payout lands — rotating, savings, grocery or burial.">
+        <div className="flex items-center justify-between rounded-2xl bg-fill px-3.5 py-3 text-[13px]">
+          <span><b className="font-semibold">Your turn</b><br /><span className="text-muted-foreground">April · position 4 of 12</span></span>
+          <span className="tnum text-[17px] font-bold">R 12 000</span>
+        </div>
+      </Tile>
+      <Tile icon={Hourglass} color="var(--chart-6)" title="Wishlist with cooling-off" body="Wait 48 hours before you buy. If you still want it, Loot checks it against that day’s numbers.">
+        <div className="flex items-center gap-4">
+          <PercentRing pct={72} />
+          <div className="text-[13px]">
+            <p className="font-semibold">AirPods</p>
+            <p className="text-muted-foreground">Ready in 14 hours</p>
+          </div>
+        </div>
+      </Tile>
+      <Tile icon={Wrench} color="var(--chart-3)" title="Tools for big decisions" body="The true cost of a car, rent vs buy, moving out, your runway, Survive January and Black Friday." />
+    </>
+  )
+}
+
 function Bento() {
+  const phase6 = usePublicFeature('phase6_landing')
   return (
     <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {phase6 && <Phase6Tiles />}
       {/* Checker — the hero feature */}
       <div className="object-card flex flex-col gap-5 p-6 sm:col-span-2 md:p-8">
         <div className="max-w-md">

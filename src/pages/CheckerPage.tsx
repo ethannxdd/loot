@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import { ArrowRight, Loader2, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
@@ -6,7 +6,9 @@ import { CheckHistoryList } from '@/components/checker/CheckHistoryList'
 import { ExpenseForm } from '@/components/expenses/ExpenseForm'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useAffordabilityChecks } from '@/hooks/useAffordabilityChecks'
+import { useAddWishlistItem } from '@/hooks/useDecide'
 import { useAddExpense, useExpenses } from '@/hooks/useExpenses'
+import { useFeature } from '@/hooks/useFeatures'
 import { useGoals } from '@/hooks/useGoals'
 import { useProfile } from '@/hooks/useProfile'
 import { useRunAffordabilityCheck } from '@/hooks/useRunAffordabilityCheck'
@@ -14,6 +16,7 @@ import { disposableIncome, safetyBufferAmount, type AffordabilityResult } from '
 import type { NewExpense } from '@/lib/types'
 import { formatCurrency, formatCurrencyExact } from '@/lib/utils'
 import { VERDICT_META } from '@/lib/verdict'
+import { defaultCoolOff } from '@/lib/wishlist'
 
 const VERDICT_TONE = {
   comfortable: { ring: 'bg-primary/12 text-primary', chip: 'chip-positive' },
@@ -28,10 +31,14 @@ export function CheckerPage() {
   const { data: history = [] } = useAffordabilityChecks()
   const { run, ready, isSaving } = useRunAffordabilityCheck()
   const addExpense = useAddExpense()
+  const wishlistOn = useFeature('wishlist')
+  const addWish = useAddWishlistItem()
+  // Tools can open the checker pre-filled (Phase 6 B4: /checker?item=…&amount=…&recurring=1).
+  const search = useSearch({ from: '/_app/checker' })
 
-  const [itemName, setItemName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [isRecurring, setIsRecurring] = useState(false)
+  const [itemName, setItemName] = useState(search.item ?? '')
+  const [amount, setAmount] = useState(search.amount ? String(search.amount) : '')
+  const [isRecurring, setIsRecurring] = useState(search.recurring === 1)
   // The result is pinned to the inputs it was run with, so editing the form afterwards can't silently
   // change what "Add to expenses" pre-fills or whether it shows.
   const [checked, setChecked] = useState<{
@@ -189,6 +196,30 @@ export function CheckerPage() {
               {checked.isRecurring && result.verdict !== 'not-recommended' && !addToExpensesOpen && (
                 <button type="button" onClick={() => setAddToExpensesOpen(true)} className="btn btn-primary mt-5 self-start">
                   <Plus size={16} strokeWidth={2.4} /> Add to expenses
+                </button>
+              )}
+              {wishlistOn && !checked.isRecurring && result.verdict !== 'comfortable' && (
+                <button
+                  type="button"
+                  disabled={addWish.isPending}
+                  onClick={() =>
+                    addWish.mutate(
+                      {
+                        name: checked.itemName,
+                        price: checked.amount,
+                        url: null,
+                        category: null,
+                        cool_off_days: defaultCoolOff(checked.amount, profile?.net_income ?? 0),
+                        tags: [],
+                        target_price: null,
+                      },
+                      { onSuccess: () => toast.success(`${checked.itemName} is on your wishlist. Loot will check again when it’s ready.`) },
+                    )
+                  }
+                  className="btn btn-secondary mt-5 self-start"
+                  data-testid="checker-wishlist"
+                >
+                  Add to wishlist instead
                 </button>
               )}
             </section>

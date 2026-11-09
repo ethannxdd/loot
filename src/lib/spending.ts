@@ -1,0 +1,283 @@
+import { GROWTH_CATEGORIES } from './category-data'
+import { inCycle, type Cycle } from './cycle'
+import { monthlyEquivalent } from './money'
+import { addDays, startOfDay } from './sa-calendar'
+import type { Expense } from './types'
+
+/**
+ * Business Rules 19–21 — Safe to spend, budgets left and the spend log. Everything here is computed on top of the
+ * Rule 1 disposable figure from money.ts, which stays unchanged.
+ */
+
+export const SPEND_SOURCES = ['manual', 'apple_pay', 'split', 'stokvel'] as const
+export type SpendSource = (typeof SPEND_SOURCES)[number]
+
+/** Mirrors public.spend_entries — Migration 026. */
+export interface SpendEntry {
+  id: string
+  user_id: string
+  /** Positive = money out. Negative = money back (refund, split settled, stokvel payout added to the cycle). */
+  amount: number
+  merchant: string | null
+  note: string | null
+  /** null = "To sort" (auto-captured with no merchant rule yet). */
+  category: string | null
+  spent_at: string
+  source: SpendSource
+  source_id: string | null
+  external_hash: string | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type NewSpendEntry = Pick<SpendEntry, 'amount' | 'category'> &
+  Partial<Pick<SpendEntry, 'merchant' | 'note' | 'spent_at' | 'source' | 'source_id'>>
+
+/** Mirrors public.spend_merchant_rules — Migration 026. */
+export interface MerchantRule {
+  user_id: string
+  merchant_key: string
+  category: string
+  updated_at: string
+}
+
+/** Key under which entries with no category ("To sort") are grouped in per-category totals. */
+export const UNSORTED = '__unsorted'
+
+export interface Budget {
+  category: string
+  /** Monthly-equivalent of the variable expenses in this category. */
+  budget: number
+}
+
+/**
+ * Variable budgets — non-fixed, active expenses grouped by category (monthly equivalents). Saving & growing
+ * categories are left out: they're money set aside, not money to spend down.
+ */
+export function budgetsFor(expenses: Expense[]): Budget[] {
+  const totals = new Map<string, number>()
+  for (const e of expenses) {
+    if (e.deleted_at || e.is_fixed) continue
+    if (GROWTH_CATEGORIES.has(e.category as never)) continue
+    const amount = monthlyEquivalent(e)
+    if (amount <= 0) continue
+    totals.set(e.category, (totals.get(e.category) ?? 0) + amount)
+  }
+  return [...totals.entries()].map(([category, budget]) => ({ category, budget })).sort((a, b) => b.budget - a.budget)
+}
+
+/** Categories that only hold fixed expenses (debit orders) — hidden in the log sheet by default (Rule 20). */
+export function fixedOnlyCategories(expenses: Expense[]): Set<string> {
+  const fixed = new Set<string>()
+  const variable = new Set<string>()
+  for (const e of expenses) {
+    if (e.deleted_at) continue
+    ;(e.is_fixed ? fixed : variable).add(e.category)
+  }
+  return new Set([...fixed].filter((c) => !variable.has(c)))
+}
+
+export function activeEntries(entries: SpendEntry[]): SpendEntry[] {
+  return entries.filter((e) => !e.deleted_at)
+}
+
+/** Entries inside the cycle (deleted ones excluded). */
+export function entriesInCycle(entries: SpendEntry[], cycle: Pick<Cycle, 'start' | 'end'>): SpendEntry[] {
+  return entries.filter((e) => !e.deleted_at && inCycle(e.spent_at, cycle))
+}
+
+/** Net spend per category in the cycle. Unsorted entries are grouped under UNSORTED. */
+export function spendByCategory(entries: SpendEntry[], cycle: Pick<Cycle, 'start' | 'end'>): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const e of entriesInCycle(entries, cycle)) {
+    const key = e.category ?? UNSORTED
+    out[key] = (out[key] ?? 0) + Number(e.amount)
+  }
+  return out
+}
+
+export type SafeState = 'ok' | 'tight' | 'over'
+
+export interface SafeToSpend {
+  /** Rule 19: disposable − buffer − unplanned − Σ overspend. Can be negative ("Over by"). */
+  safe: number
+  /** Safe ÷ days left (incl. today); never negative. */
+  perDay: number
+  daysLeft: number
+  /** Spend in categories with no variable budget (incl. unsorted). */
+  unplanned: number
+  /** Σ max(0, spent − budget) across budgeted categories. */
+  over: number
+  overByCategory: Record<string, number>
+  /** max(0, budget − spent) per budgeted category. */
+  budgetsLeft: Record<string, number>
+  spentByCategory: Record<string, number>
+  /** Net spend logged this cycle (all categories). */
+  totalSpent: number
+  /** What's free before anything is logged: disposable − buffer. */
+  planned: number
+  state: SafeState
+  /** Number of entries in the cycle — 0 means the figure is still plan-only. */
+  entryCount: number
+}
+
+/** Below this share of the planned free money, Safe to spend reads as "tight". */
+const TIGHT_SHARE = 0.15
+
+export function safeToSpend(params: {
+  disposable: number
+  buffer: number
+  budgets: Budget[]
+  entries: SpendEntry[]
+  cycle: Pick<Cycle, 'start' | 'end' | 'daysLeft'>
+}): SafeToSpend {
+  const { disposable, buffer, budgets, entries, cycle } = params
+  const spent = spendByCategory(entries, cycle)
+  const budgetMap = new Map(budgets.map((b) => [b.category, b.budget]))
+
+  let unplanned = 0
+  let over = 0
+  const overByCategory: Record<string, number> = {}
+  const budgetsLeft: Record<string, number> = {}
+
+  for (const [category, amount] of Object.entries(spent)) {
+    const budget = budgetMap.get(category)
+    if (budget === undefined) {
+      unplanned += amount
+      continue
+    }
+    const o = Math.max(0, amount - budget)
+    if (o > 0) {
+      overByCategory[category] = o
+      over += o
+    }
+  }
+  for (const b of budgets) budgetsLeft[b.category] = Math.max(0, b.budget - (spent[b.category] ?? 0))
+
+  const planned = disposable - buffer
+  // Negative entries (refunds, a stokvel payout added to the cycle) reduce unplanned spend and can lift Safe to
+  // spend above the plan — that money really is back in your pocket.
+  const safe = planned - unplanned - over
+  const daysLeft = Math.max(1, cycle.daysLeft)
+  const perDay = safe > 0 ? safe / daysLeft : 0
+  const state: SafeState = safe < 0 ? 'over' : planned > 0 && safe < planned * TIGHT_SHARE ? 'tight' : safe <= 0 ? 'tight' : 'ok'
+  const totalSpent = Object.values(spent).reduce((s, v) => s + v, 0)
+
+  return {
+    safe,
+    perDay,
+    daysLeft,
+    unplanned,
+    over,
+    overByCategory,
+    budgetsLeft,
+    spentByCategory: spent,
+    totalSpent,
+    planned,
+    state,
+    entryCount: entriesInCycle(entries, cycle).length,
+  }
+}
+
+export type PaceStatus = 'under' | 'ahead' | 'over'
+
+export interface Pace {
+  /** Share of the cycle elapsed including today, 0–1. */
+  fraction: number
+  /** Where spend "should" be today if spread evenly. */
+  expected: number
+  spent: number
+  budget: number
+  left: number
+  /** 'ahead' = spending faster than the even pace; 'over' = past the budget. */
+  status: PaceStatus
+}
+
+/** Even-pace check for one budget. 'ahead' kicks in at 10% over the expected spend, so a single shop isn't amber. */
+export function paceFor(budget: number, spent: number, cycle: Pick<Cycle, 'start' | 'end' | 'daysTotal'>, today = new Date()): Pace {
+  const t = startOfDay(today)
+  const elapsedDays =
+    t.getTime() < cycle.start.getTime()
+      ? 0
+      : t.getTime() > cycle.end.getTime()
+        ? cycle.daysTotal
+        : Math.round((t.getTime() - cycle.start.getTime()) / 86_400_000) + 1
+  const fraction = cycle.daysTotal > 0 ? Math.min(1, elapsedDays / cycle.daysTotal) : 1
+  const expected = budget * fraction
+  const status: PaceStatus = spent > budget ? 'over' : spent > expected * 1.1 && spent > 0 ? 'ahead' : 'under'
+  return { fraction, expected, spent, budget, left: Math.max(0, budget - spent), status }
+}
+
+/**
+ * Normalised merchant for merchant memory: lower-case, digits and punctuation stripped, spaces collapsed.
+ * "WOOLWORTHS 1234 Sandton*" → "woolworths sandton". Returns '' for nothing usable.
+ */
+export function merchantKey(merchant: string | null | undefined): string {
+  return (merchant ?? '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120)
+}
+
+/** Distinct past merchants, most recent first, for autocomplete. */
+export function recentMerchants(entries: SpendEntry[], limit = 30): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  const sorted = [...entries].filter((e) => !e.deleted_at && e.merchant).sort((a, b) => b.spent_at.localeCompare(a.spent_at))
+  for (const e of sorted) {
+    const k = merchantKey(e.merchant)
+    if (!k || seen.has(k)) continue
+    seen.add(k)
+    out.push(e.merchant!.trim())
+    if (out.length >= limit) break
+  }
+  return out
+}
+
+/** Categories over budget in each of the last `cycles` (newest first) — drives "Raise Groceries budget to R x". */
+export function repeatedOverspend(
+  entries: SpendEntry[],
+  budgets: Budget[],
+  cycles: Pick<Cycle, 'start' | 'end'>[],
+): { category: string; budget: number; suggested: number }[] {
+  if (cycles.length === 0) return []
+  const perCycle = cycles.map((c) => spendByCategory(entries, c))
+  return budgets
+    .filter((b) => perCycle.every((s) => (s[b.category] ?? 0) > b.budget))
+    .map((b) => {
+      const highest = Math.max(...perCycle.map((s) => s[b.category] ?? 0))
+      // Round the suggestion up to the next R50 so it reads like a budget, not a calculation.
+      return { category: b.category, budget: b.budget, suggested: Math.ceil(highest / 50) * 50 }
+    })
+}
+
+/** Groups entries by local day, newest day first. */
+export function groupByDay(entries: SpendEntry[]): { day: Date; entries: SpendEntry[]; total: number }[] {
+  const map = new Map<number, SpendEntry[]>()
+  for (const e of entries) {
+    const d = startOfDay(new Date(e.spent_at)).getTime()
+    const list = map.get(d) ?? []
+    list.push(e)
+    map.set(d, list)
+  }
+  return [...map.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([d, list]) => ({
+      day: new Date(d),
+      entries: list.sort((a, b) => b.spent_at.localeCompare(a.spent_at)),
+      total: list.reduce((s, e) => s + Number(e.amount), 0),
+    }))
+}
+
+/** "Today" / "Yesterday" / "Fri 23 Oct". */
+export function dayLabel(day: Date, today = new Date()): string {
+  const t = startOfDay(today).getTime()
+  if (day.getTime() === t) return 'Today'
+  if (day.getTime() === addDays(startOfDay(today), -1).getTime()) return 'Yesterday'
+  return day.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })
+}

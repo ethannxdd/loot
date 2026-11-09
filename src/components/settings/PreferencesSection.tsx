@@ -6,6 +6,8 @@ import { SettingsHeading } from '@/components/settings/SettingsHeading'
 import { BufferInput } from '@/components/ui/BufferInput'
 import { Select } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
+import { NotificationsSection } from '@/components/settings/NotificationsSection'
+import { useFeature } from '@/hooks/useFeatures'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { useTaxProfile } from '@/hooks/useTaxProfile'
 import { normalizeAllocationMode, normalizeAutoTiming } from '@/lib/goal-math'
@@ -15,6 +17,7 @@ import { formatCurrency } from '@/lib/utils'
 
 export function PreferencesSection({ profile }: { profile: Profile }) {
   const update = useUpdateProfile()
+  const push = useFeature('push')
   const { data: taxProfile } = useTaxProfile()
   const [buffer, setBuffer] = useState(String(profile.safety_buffer_pct))
 
@@ -129,6 +132,9 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
         </p>
       </section>
 
+      {push ? (
+        <NotificationsSection profile={profile} />
+      ) : (
       <section className="card space-y-3">
         <SettingsHeading icon={Bell} title="Notifications" color="var(--chart-5)" />
         <p className="text-[14px] text-muted-foreground">
@@ -154,6 +160,7 @@ export function PreferencesSection({ profile }: { profile: Profile }) {
           <Switch label="Push notifications" checked={false} disabled onChange={() => undefined} />
         </div>
       </section>
+      )}
 
       <section className="card space-y-3">
         <SettingsHeading icon={Landmark} title="Tax" color="var(--chart-2)" />

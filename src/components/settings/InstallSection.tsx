@@ -34,7 +34,7 @@ export function InstallSection() {
       : 'Install Loot as an app. It opens in its own window and loads instantly.'
 
   return (
-    <section className="card space-y-4" data-testid="install-section">
+    <section id="install" className="card scroll-mt-6 space-y-4" data-testid="install-section">
       <SettingsHeading
         icon={Smartphone}
         title="Install Loot"

@@ -2,19 +2,29 @@ import { ChevronLeft, ChevronRight, Download, Lock, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useCurrentMonthSnapshot, useLockCurrentMonth } from '@/hooks/useMonthlyClose'
 import { useProfile } from '@/hooks/useProfile'
-import { useExpenses } from '@/hooks/useExpenses'
+import { useExpenses, useUpdateExpense } from '@/hooks/useExpenses'
+import { useSafeToSpend } from '@/hooks/useSpendEntries'
+import { categoryLabel } from '@/lib/categories'
+import { cycleForMonth } from '@/lib/cycle'
+import { repeatedOverspend } from '@/lib/spending'
 import { MonthlyCloseExportDoc } from '@/components/export/ExportDocs'
 import { exportDocument } from '@/lib/export'
 import { monthLabel, monthlyEquivalent } from '@/lib/money'
 import { formatCurrency } from '@/lib/utils'
 
-const STEPS = ['Income', 'Fixed expenses', 'Variable expenses', 'Notes', 'Lock'] as const
+const BASE_STEPS = ['Income', 'Fixed expenses', 'Variable expenses', 'Notes', 'Lock'] as const
+/** Phase 6: with payday cycles on, a "Review spending" step sits between variable expenses and notes. */
+const LIVE_STEPS = ['Income', 'Fixed expenses', 'Variable expenses', 'Review spending', 'Notes', 'Lock'] as const
+type StepName = (typeof LIVE_STEPS)[number]
 
 export function MonthlyCloseCard() {
   const { data: profile } = useProfile()
   const { data: expenses = [] } = useExpenses()
   const { data: currentSnapshot, isLoading } = useCurrentMonthSnapshot()
   const lockMonth = useLockCurrentMonth()
+  const live = useSafeToSpend()
+  const updateExpense = useUpdateExpense()
+  const STEPS: readonly StepName[] = live.live ? LIVE_STEPS : BASE_STEPS
   const [wizardOpen, setWizardOpen] = useState(false)
   const [step, setStep] = useState(0)
   const [notes, setNotes] = useState('')
@@ -27,6 +37,7 @@ export function MonthlyCloseCard() {
   if (isLoading || !profile) return <div className="skeleton h-40 rounded-2xl" />
 
   const isLocked = Boolean(currentSnapshot?.locked_at)
+  const current = STEPS[Math.min(step, STEPS.length - 1)]
   const active = expenses.filter((e) => !e.deleted_at)
   const fixed = active.filter((e) => e.is_fixed)
   const variable = active.filter((e) => !e.is_fixed)
@@ -42,9 +53,23 @@ export function MonthlyCloseCard() {
     await exportDocument(<MonthlyCloseExportDoc snapshot={currentSnapshot} />, `loot-monthly-close-${currentSnapshot.month}`, 'pdf')
   }
 
-  const monthName = new Date().toLocaleDateString('en-ZA', { month: 'long' })
+  const cycleMode = live.live && !live.cycle.calendar
+  const monthName = cycleMode ? live.cycle.shortLabel : new Date().toLocaleDateString('en-ZA', { month: 'long' })
   const now = new Date()
-  const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1
+  const daysLeft = cycleMode ? live.cycle.daysLeft : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1
+
+  // "Raise Groceries budget to R x" when a budget was over in this cycle and the one before (§3.2).
+  const [cy, cm] = live.cycle.key.split('-').map(Number)
+  const suggestions = live.live
+    ? repeatedOverspend(live.entries, live.budgets, [live.cycle, cycleForMonth(cy, cm - 2, live.settings)])
+    : []
+
+  function raiseBudget(category: string, to: number, from: number) {
+    // The budget is the sum of the category's variable expenses; put the increase on the biggest one.
+    const target = variable.filter((e) => e.category === category && e.frequency === 'monthly').sort((a, b) => b.amount - a.amount)[0]
+    if (!target) return
+    updateExpense.mutate({ id: target.id, patch: { amount: Math.round((target.amount + (to - from)) * 100) / 100 } })
+  }
 
   return (
     <div className="card space-y-4">
@@ -56,7 +81,7 @@ export function MonthlyCloseCard() {
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Close {monthName}</span>
             <span className="block text-[13px] text-muted-foreground">
-              {daysLeft <= 1 ? 'Last day — ready to close' : `${daysLeft} days left in ${monthName}`} · 5
+              {daysLeft <= 1 ? 'Last day — ready to close' : `${daysLeft} days left in ${monthName}`} · {STEPS.length}{' '}
               quick steps
             </span>
           </span>
@@ -87,7 +112,7 @@ export function MonthlyCloseCard() {
         <div ref={wizardRef} className="animate-enter space-y-5">
           <div className="flex items-center justify-between">
             <span className="text-[15px] font-semibold">
-              {STEPS[step]}
+              {current}
               <span className="ml-2 text-[13px] font-medium text-muted-foreground">
                 Step {step + 1} of {STEPS.length}
               </span>
@@ -108,7 +133,7 @@ export function MonthlyCloseCard() {
             ))}
           </div>
 
-          {step === 0 && (
+          {current === 'Income' && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">Does this month's income look right?</p>
               <div className="space-y-2 rounded-xl bg-surface-2 p-4">
@@ -125,7 +150,7 @@ export function MonthlyCloseCard() {
             </div>
           )}
 
-          {step === 1 && (
+          {current === 'Fixed expenses' && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Confirm your fixed expenses for the month.</p>
               {fixed.length === 0 && <p className="text-xs text-text-muted">No fixed expenses tracked.</p>}
@@ -138,7 +163,7 @@ export function MonthlyCloseCard() {
             </div>
           )}
 
-          {step === 2 && (
+          {current === 'Variable expenses' && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Review your variable expenses.</p>
               {variable.length === 0 && <p className="text-xs text-text-muted">No variable expenses tracked.</p>}
@@ -151,7 +176,46 @@ export function MonthlyCloseCard() {
             </div>
           )}
 
-          {step === 3 && (
+          {current === 'Review spending' && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">What you logged this cycle against each budget.</p>
+              {live.budgets.length === 0 && Object.keys(live.spentByCategory).length === 0 && (
+                <p className="text-xs text-text-muted">Nothing logged this cycle.</p>
+              )}
+              {live.budgets.map((b) => {
+                const spent = live.spentByCategory[b.category] ?? 0
+                return (
+                  <div key={b.category} className="flex justify-between rounded-xl bg-surface-2 px-3.5 py-2.5 text-sm">
+                    <span>{categoryLabel(b.category)}</span>
+                    <span className={`tnum ${spent > b.budget ? 'font-semibold text-alert' : ''}`}>
+                      {formatCurrency(spent)} of {formatCurrency(b.budget)}
+                    </span>
+                  </div>
+                )
+              })}
+              {live.unplanned > 0 && (
+                <div className="flex justify-between rounded-xl bg-surface-2 px-3.5 py-2.5 text-sm">
+                  <span>Unplanned</span>
+                  <span className="tnum font-semibold text-caution">{formatCurrency(live.unplanned)}</span>
+                </div>
+              )}
+              {suggestions.map((s) => (
+                <div key={s.category} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[var(--accent-tint)] px-3.5 py-2.5 text-sm">
+                  <span>{categoryLabel(s.category)} was over two cycles running.</span>
+                  <button
+                    type="button"
+                    disabled={updateExpense.isPending}
+                    onClick={() => raiseBudget(s.category, s.suggested, s.budget)}
+                    className="btn btn-secondary !min-h-8 !px-3 !text-[13px]"
+                  >
+                    Raise to {formatCurrency(s.suggested)}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {current === 'Notes' && (
             <div className="space-y-2">
               <label className="field-label" htmlFor="close-notes">
                 Anything worth remembering about this month?
@@ -166,7 +230,7 @@ export function MonthlyCloseCard() {
             </div>
           )}
 
-          {step === 4 && (
+          {current === 'Lock' && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Locking freezes this month's numbers in your history — they won't change even if you edit expenses

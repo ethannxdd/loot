@@ -9,11 +9,13 @@ import {
   useIncomeStreams,
   useUpdateIncomeStream,
 } from '@/hooks/useIncomeStreams'
+import { useFeature } from '@/hooks/useFeatures'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { monthlyIncomeAmount } from '@/lib/money'
 import type { IncomeFrequency, IncomeStream, Profile } from '@/lib/types'
 import { formatCurrencyExact } from '@/lib/utils'
 import { SettingsHeading } from '@/components/settings/SettingsHeading'
+import { PaydaySection } from '@/components/settings/PaydaySection'
 
 const FREQUENCY_LABELS: Record<IncomeFrequency, string> = {
   monthly: 'Monthly',
@@ -25,6 +27,7 @@ const FREQUENCY_LABELS: Record<IncomeFrequency, string> = {
 /** Monthly gross/net income (the numbers every calculation in Loot uses) plus the streams that make it up. */
 export function IncomeSection({ profile }: { profile: Profile }) {
   const update = useUpdateProfile()
+  const live = useFeature('live_cycle')
   const { data: streams = [] } = useIncomeStreams()
   const addStream = useAddIncomeStream()
   const updateStream = useUpdateIncomeStream()
@@ -130,6 +133,8 @@ export function IncomeSection({ profile }: { profile: Profile }) {
           Save income
         </button>
       </form>
+
+      {live && <PaydaySection profile={profile} />}
 
       <section className="card space-y-4">
         <SettingsHeading

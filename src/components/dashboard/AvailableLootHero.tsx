@@ -1,6 +1,6 @@
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import type { HealthLevel } from '@/lib/money'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, splitCurrency } from '@/lib/utils'
 
 interface AvailableLootHeroProps {
   /** Disposable income this month (Business Rule 1). */
@@ -21,14 +21,6 @@ const HEALTH_META: Record<HealthLevel, { label: string; className: string }> = {
   comfortable: { label: 'Comfortable', className: 'chip-positive' },
   balanced: { label: 'Balanced', className: 'chip-caution' },
   tight: { label: 'Tight', className: 'chip-alert' },
-}
-
-/** Splits a formatted amount into its currency symbol and the number, so the symbol can be set smaller. */
-function splitCurrency(amount: number) {
-  const formatted = formatCurrency(amount)
-  const match = formatted.match(/^(-?)([^\d-]*?)\s*([\d\s.,]+)$/)
-  if (!match) return { sign: '', symbol: '', number: formatted }
-  return { sign: match[1], symbol: match[2].trim(), number: match[3].trim() }
 }
 
 /**

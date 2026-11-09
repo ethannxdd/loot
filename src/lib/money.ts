@@ -1,5 +1,5 @@
 import type { AffordabilityVerdict, Expense } from './types'
-import { formatCurrency } from './utils'
+import { formatCurrency } from './format'
 
 /** Converts any expense frequency to its monthly-equivalent amount. */
 export function monthlyEquivalent(expense: Pick<Expense, 'amount' | 'frequency'>): number {

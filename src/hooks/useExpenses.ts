@@ -5,6 +5,7 @@ import { upsertCurrentMonthSnapshot } from '@/lib/snapshot'
 import { supabase } from '@/lib/supabase'
 import type { Expense, NewExpense } from '@/lib/types'
 import { useAuth } from './useAuth'
+import { currentCycleKey } from './useCycle'
 
 export function expensesQueryKey(userId: string | undefined) {
   return ['expenses', userId] as const
@@ -47,7 +48,7 @@ export async function refreshCurrentSnapshot(queryClient: QueryClient, userId: s
       staleTime: 0,
     }),
   ])
-  await upsertCurrentMonthSnapshot(profile, expenses)
+  await upsertCurrentMonthSnapshot(profile, expenses, currentCycleKey(queryClient, userId, profile))
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ['monthly_snapshots', userId] }),
     queryClient.invalidateQueries({ queryKey: ['monthly_snapshot', userId] }),

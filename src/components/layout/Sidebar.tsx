@@ -7,7 +7,8 @@ import { Logo } from '@/components/ui/Logo'
 import { useAdminMe } from '@/hooks/useAdmin'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
-import { isActivePath, NAV_GROUPS } from '@/lib/nav'
+import { useNav } from '@/hooks/useNav'
+import { isActivePath } from '@/lib/nav'
 import { initials } from '@/lib/utils'
 
 /**
@@ -22,6 +23,7 @@ export function Sidebar() {
   const settingsActive = isActivePath(pathname, '/settings')
   const reduceMotion = useReducedMotion()
   const { data: adminMe } = useAdminMe()
+  const { groups } = useNav()
 
   return (
     <aside className="sticky top-0 z-20 hidden h-dvh w-[256px] shrink-0 p-3 md:block">
@@ -37,7 +39,7 @@ export function Sidebar() {
       </div>
 
       <nav className="-mx-1 flex-1 space-y-5 overflow-y-auto px-1" aria-label="Main">
-        {NAV_GROUPS.filter((g) => g.label !== 'Other').map((group) => (
+        {groups.filter((g) => g.label !== 'Other').map((group) => (
           <div key={group.label}>
             <div className="px-2.5 pb-1.5 text-[11px] font-semibold text-text-subtle">{group.label}</div>
             <div className="space-y-0.5">

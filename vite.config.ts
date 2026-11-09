@@ -6,6 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Build version for feedback context (Phase 6 B7). Vercel sets VERCEL_GIT_COMMIT_SHA.
+  define: {
+    __APP_VERSION__: JSON.stringify((process.env.VERCEL_GIT_COMMIT_SHA ?? 'local').slice(0, 7)),
+  },
   plugins: [
     tanstackRouter({
       target: 'react',
@@ -26,26 +30,16 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false,
       manifest: false,
-      workbox: {
+      // Phase 6 B2: our own worker (src/sw/sw.ts) so it can handle Web Push. Its caching rules are the same ones the
+      // generated worker had: pre-cache the shell, SPA fallback, lazy /assets/ cache-first, Supabase never cached.
+      strategies: 'injectManifest',
+      srcDir: 'src/sw',
+      filename: 'sw.ts',
+      injectManifest: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}'],
         // Heavy, rarely-used libraries (pdf.js + its 1.3 MB worker for Statements, jsPDF/html2canvas for
-        // exports) aren't pre-cached — they're cached the first time they're used instead (below).
+        // exports) aren't pre-cached — they're cached the first time they're used instead (see sw.ts).
         globIgnores: ['**/pdf.worker*', '**/assets/pdf-*', '**/assets/jspdf*', '**/assets/html2canvas*', '**/assets/index.es-*'],
-        navigateFallback: '/index.html',
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        runtimeCaching: [
-          {
-            // Built assets have content hashes in their names, so a cached copy never goes stale.
-            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/assets/'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'loot-lazy-assets',
-              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 60 },
-              cacheableResponse: { statuses: [200] },
-            },
-          },
-        ],
       },
       devOptions: { enabled: false },
     }),

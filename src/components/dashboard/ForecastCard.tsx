@@ -2,7 +2,7 @@ import { Activity } from 'lucide-react'
 import { useId } from 'react'
 import { categoryLabel } from '@/lib/categories'
 import { computeForecast } from '@/lib/forecast'
-import { currentMonthKey } from '@/lib/money'
+import type { Cycle } from '@/lib/cycle'
 import type { Expense, MonthlySnapshot } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 
@@ -18,6 +18,12 @@ interface ForecastCardProps {
   netIncome: number
   /** Live disposable income right now — drawn as the "Now" marker on this month's bar. */
   currentDisposable: number
+  /** The current cycle (calendar month unless payday cycles are on). */
+  cycle: Cycle
+  /** Payday cycles on: label bars "Oct pay" and say "before payday". */
+  live?: boolean
+  /** Phase 6 B3: once-off income expected this cycle (stokvel payouts) — shown separately, never in the projection. */
+  expectedIncome?: { label: string; amount: number }[]
 }
 
 function shortMonth(key: string) {
@@ -26,13 +32,14 @@ function shortMonth(key: string) {
 }
 
 /** Month-end forecast (v2): headline projection + Health-style bars of what was left over each month. */
-export function ForecastCard({ snapshots, expenses, netIncome, currentDisposable }: ForecastCardProps) {
-  const forecast = computeForecast(snapshots, expenses, netIncome)
+export function ForecastCard({ snapshots, expenses, netIncome, currentDisposable, cycle, live = false, expectedIncome = [] }: ForecastCardProps) {
+  const forecast = computeForecast(snapshots, expenses, netIncome, new Date(), cycle.key)
   const confidence = CONFIDENCE_META[forecast.confidence]
   const hatchId = `hatch-${useId().replace(/:/g, '')}`
+  const cycleMode = live && !cycle.calendar
   const monthName = new Date().toLocaleDateString('en-ZA', { month: 'long' })
 
-  const thisMonth = currentMonthKey()
+  const thisMonth = cycle.key
   const history = snapshots
     .filter((s) => s.month < thisMonth)
     .sort((a, b) => a.month.localeCompare(b.month))
@@ -52,7 +59,7 @@ export function ForecastCard({ snapshots, expenses, netIncome, currentDisposable
   return (
     <section className="card h-full">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="card-title">Month-end forecast</h3>
+        <h3 className="card-title">{cycleMode ? 'Payday forecast' : 'Month-end forecast'}</h3>
         <div className="flex gap-4 text-[12px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <i className="inline-block h-[3px] w-3.5 rounded bg-primary" /> Left over
@@ -64,7 +71,9 @@ export function ForecastCard({ snapshots, expenses, netIncome, currentDisposable
       </div>
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
         <div className="sm:w-[200px] sm:shrink-0">
-          <p className="text-[13px] text-muted-foreground">You&apos;ll likely end {monthName} with</p>
+          <p className="text-[13px] text-muted-foreground">
+            {cycleMode ? 'You’ll likely reach payday with' : <>You&apos;ll likely end {monthName} with</>}
+          </p>
           <p
             className={`tnum mt-1 mb-2 text-[30px] font-bold tracking-[-0.03em] ${
               forecast.projectedDisposableIncome < 0 ? 'text-alert' : ''
@@ -73,6 +82,12 @@ export function ForecastCard({ snapshots, expenses, netIncome, currentDisposable
             {formatCurrency(forecast.projectedDisposableIncome)}
           </p>
           <span className={`chip ${confidence.className}`}>{confidence.label}</span>
+          {expectedIncome.map((i) => (
+            <p key={i.label} className="mt-3 text-[13px] text-muted-foreground">
+              Plus <b className="tnum font-semibold text-foreground">{formatCurrency(i.amount)}</b> expected from {i.label} (not counted
+              until it arrives).
+            </p>
+          ))}
           {flagged && (
             <p className="mt-3.5 flex gap-1.5 text-[13px] text-muted-foreground">
               <Activity size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-caution" />

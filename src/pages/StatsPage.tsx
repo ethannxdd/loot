@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CheckHistoryList } from '@/components/checker/CheckHistoryList'
 import { BenchmarksTab } from '@/components/stats/BenchmarksTab'
 import { CategoryTrendsTab } from '@/components/stats/CategoryTrendsTab'
+import { FamilySupportCard } from '@/components/stats/FamilySupportCard'
 import { NetWorthTab } from '@/components/stats/NetWorthTab'
 import { OverviewTab } from '@/components/stats/OverviewTab'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -29,7 +30,12 @@ export function StatsPage() {
 
       {snapshotsLoading && tab !== 'Net worth' && <div className="skeleton h-64 rounded-[22px]" />}
       {!snapshotsLoading && tab === 'Overview' && <OverviewTab snapshots={snapshots} />}
-      {!snapshotsLoading && tab === 'Categories' && <CategoryTrendsTab snapshots={snapshots} />}
+      {!snapshotsLoading && tab === 'Categories' && (
+        <>
+          <FamilySupportCard snapshots={snapshots} />
+          <CategoryTrendsTab snapshots={snapshots} />
+        </>
+      )}
       {tab === 'Net worth' && <NetWorthTab snapshots={snapshots} />}
       {!snapshotsLoading && tab === 'Benchmarks' && (
         <BenchmarksTab latestSnapshot={snapshots[snapshots.length - 1]} grossIncome={profile?.gross_income ?? 0} />

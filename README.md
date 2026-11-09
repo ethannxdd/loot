@@ -86,6 +86,20 @@ A rating of your money habits: debt-to-income, savings rate, spending consistenc
 
 Link up with a partner to see your combined income and expenses, with each expense labelled by whose it is. You each keep your own individual view.
 
+### Live Loot (rolling out)
+
+Loot now runs from **payday to payday** — your month starts when you're paid, moved for weekends and SA public holidays.
+
+- **Safe to spend:** what's actually free until payday after budgets, debit orders and your buffer, with a daily amount. Log a spend in two taps, or let your iPhone log **Apple Pay** taps for you with a Shortcut.
+- **Budgets:** each variable expense becomes a budget with what's left and where you should be today.
+- **Stokvels and splits:** track your stokvel contributions and payout month, split bills and send a PayShap request.
+- **Wishlist with cooling-off:** wait before you buy; when the wait is over, Loot checks it against that day's numbers.
+- **Tools:** the true cost of a car, rent vs buy, moving out, your runway, Survive January and Black Friday.
+- **Stay ahead:** renewals, announced price increases that affect you, and savings challenges.
+- **Future you:** TFSA room, where your retirement savings are heading, and the real cost of a two-pot withdrawal.
+- **Push notifications:** payday, debit orders tomorrow, budgets running low and more — never at night.
+- **Ask Loot:** ask about a purchase or your cycle; every figure in the answer is worked out from your own numbers.
+
 ### And the small things
 
 - **Monthly close:** lock in each month and keep a record you can export.
@@ -114,6 +128,7 @@ Loot takes its lead from Apple's design principles: one clear number per page, p
 
 - **Bank statements are processed entirely in your browser.** Raw transactions never reach Loot's servers; only the category totals you choose to save are stored.
 - **No bank login.** Loot never connects to your bank accounts and can't move money.
+- **Apple Pay capture sends only the amount, the shop and the time** — never card or bank details. Stokvel members and split friends are names only.
 - **Your data is yours.** Every table is protected so only you can see your records (a linked household partner can see only the shared figures). You can export all your data or delete your account at any time from Settings.
 
 ---

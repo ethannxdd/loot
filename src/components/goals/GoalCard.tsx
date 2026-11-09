@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, GripVertical, Loader2, Pause, Play, Sparkles } from 'lucide-react'
-import type { DragEvent } from 'react'
+import { ArrowDown, ArrowUp, Check, GripVertical, Loader2, Pause, Play, Sparkles } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { goalCategoryColor, goalCategoryIcon } from '@/lib/categories'
 import { deadlineLabel, parseDateOnly, requiredMonthlyContribution } from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
@@ -50,6 +51,8 @@ export function GoalCard({
     : null
 
   const color = goal.is_completed ? 'var(--accent)' : goal.is_paused ? 'var(--chart-7)' : goalCategoryColor(goal.category)
+  const celebrating = useCompletionMoment(goal.is_completed)
+  const reduce = useReducedMotion()
   const pct = Math.min(100, Math.round(progress * 100))
   const iconBtn =
     'grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-fill hover:text-foreground'
@@ -74,7 +77,14 @@ export function GoalCard({
             <p className="truncate text-[16px] font-semibold tracking-[-0.01em] hover:text-primary">{goal.name}</p>
           </Link>
           {goal.is_completed ? (
-            <p className="text-[13px] font-semibold text-primary">Completed</p>
+            <motion.p
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary"
+              initial={celebrating && !reduce ? { scale: 0.6, opacity: 0 } : false}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+            >
+              <Check size={14} strokeWidth={2.6} /> Done
+            </motion.p>
           ) : goal.is_paused ? (
             <p className="text-[13px] text-muted-foreground">{resumeLabel ? `Paused · resumes ${resumeLabel}` : 'Paused'}</p>
           ) : (
@@ -91,7 +101,14 @@ export function GoalCard({
 
       <div className="space-y-2">
         <div className="h-2.5 overflow-hidden rounded-full bg-fill">
-          <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: color }} />
+          {/* Phase 6 §3.8: when a goal completes in front of you, the bar closes on a spring. */}
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: color }}
+            initial={false}
+            animate={{ width: `${pct}%` }}
+            transition={reduce ? { duration: 0 } : celebrating ? { type: 'spring', stiffness: 140, damping: 12 } : { duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          />
         </div>
         <div className="flex items-center justify-between gap-3 text-[13px]">
           <span className="tnum font-semibold">
@@ -159,4 +176,24 @@ export function GoalCard({
       )}
     </div>
   )
+}
+
+/**
+ * True for a few seconds after a goal flips to completed while it's on screen (not when it loads already completed).
+ * Buzzes once on phones that support it (Android; Capacitor haptics later).
+ */
+function useCompletionMoment(completed: boolean): boolean {
+  const prev = useRef(completed)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (completed && !prev.current) {
+      setOn(true)
+      if ('vibrate' in navigator) navigator.vibrate?.(20)
+      const t = window.setTimeout(() => setOn(false), 3000)
+      prev.current = completed
+      return () => window.clearTimeout(t)
+    }
+    prev.current = completed
+  }, [completed])
+  return on
 }

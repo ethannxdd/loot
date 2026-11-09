@@ -14,12 +14,13 @@ import {
   useUpdateNetWorthItem,
 } from '@/hooks/useNetWorthItems'
 import { computeNetWorthTotals } from '@/lib/net-worth'
-import { monthLabel } from '@/lib/money'
+import { useMonthLabels } from '@/hooks/useCycle'
 import { NET_WORTH_CATEGORY_LABELS, type MonthlySnapshot, type NetWorthItem } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 
 export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const { data: items = [], isLoading } = useNetWorthItems()
+  const labels = useMonthLabels()
   const createItem = useCreateNetWorthItem()
   const updateItem = useUpdateNetWorthItem()
   const deleteItem = useDeleteNetWorthItem()
@@ -37,7 +38,7 @@ export function NetWorthTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
 
   const chartData = snapshots
     .filter((s) => s.net_worth !== null)
-    .map((s) => ({ month: monthLabel(s.month), netWorth: Math.round(s.net_worth ?? 0) }))
+    .map((s) => ({ month: labels.short(s.month), netWorth: Math.round(s.net_worth ?? 0) }))
 
   if (isLoading) return <div className="skeleton h-64 rounded-2xl" />
 

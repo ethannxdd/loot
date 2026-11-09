@@ -4,8 +4,10 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { AuthShell } from '@/components/auth/AuthShell'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Segmented } from '@/components/ui/Segmented'
+import { SwitchRow } from '@/components/ui/Switch'
 import { useAuth } from '@/hooks/useAuth'
 import { usePublicFeature } from '@/hooks/useFeatures'
+import { getRememberMe, setRememberMe } from '@/lib/supabase'
 import { isStandalone } from '@/lib/pwa'
 
 type Mode = 'signin' | 'signup' | 'forgot'
@@ -32,6 +34,7 @@ export function AuthPage() {
   const codeMode = standalone && emailCodes
   const showEmailMethod = !standalone || emailCodes
   const [code, setCode] = useState('')
+  const [remember, setRemember] = useState(getRememberMe)
   const search = useSearch({ from: '/auth' })
   const [mode, setMode] = useState<Mode>(search.mode === 'signup' ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
@@ -55,6 +58,7 @@ export function AuthPage() {
       return
     }
 
+    setRememberMe(remember)
     if (mode === 'signin') {
       const { error: authError } = await signInWithPassword(email.trim(), password)
       setIsSubmitting(false)
@@ -84,6 +88,7 @@ export function AuthPage() {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
+    setRememberMe(remember)
     const { error: authError } = await signInWithMagicLink(email.trim())
     setIsSubmitting(false)
     if (authError) {
@@ -98,6 +103,7 @@ export function AuthPage() {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
+    setRememberMe(remember)
     const { error: authError } = await verifyEmailCode(email.trim(), code)
     setIsSubmitting(false)
     if (authError) setError(authError)
@@ -106,6 +112,7 @@ export function AuthPage() {
 
   async function handleGoogle() {
     setError(null)
+    setRememberMe(remember)
     const { error: authError } = await signInWithGoogle()
     if (authError) {
       setError(
@@ -219,6 +226,14 @@ export function AuthPage() {
               {mode === 'signup' && <p className="mt-1.5 text-[13px] text-muted-foreground">At least 6 characters.</p>}
             </div>
           )}
+          {mode !== 'forgot' && (
+            <SwitchRow
+              checked={remember}
+              onChange={setRemember}
+              label="Keep me signed in"
+              hint={remember ? 'Stay signed in on this device until you sign out.' : 'You’ll be signed out when you close the browser.'}
+            />
+          )}
           {error && (
             <p role="alert" className="text-[13px] font-medium text-alert">
               {error}
@@ -324,6 +339,12 @@ export function AuthPage() {
               placeholder="you@example.com"
             />
           </div>
+          <SwitchRow
+            checked={remember}
+            onChange={setRemember}
+            label="Keep me signed in"
+            hint={remember ? 'Stay signed in on this device until you sign out.' : 'You’ll be signed out when you close the browser.'}
+          />
           {error && (
             <p role="alert" className="text-[13px] font-medium text-alert">
               {error}

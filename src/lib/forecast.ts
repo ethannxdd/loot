@@ -47,11 +47,13 @@ export function computeForecast(
   recentSnapshots: MonthlySnapshot[],
   liveExpenses: Expense[],
   liveNetIncome: number,
-  from = new Date()
+  from = new Date(),
+  /** The current cycle's key when payday cycles are on (Phase 6); defaults to the calendar month. */
+  currentKey = currentMonthKey(from),
 ): Forecast {
   // History = the last three COMPLETED months. The current month's own snapshot is just today's live
   // data again, so averaging it in would make "tracking above average" compare a number with itself.
-  const thisMonth = currentMonthKey(from)
+  const thisMonth = currentKey
   const history = recentSnapshots
     .filter((s) => s.month < thisMonth)
     .sort((a, b) => a.month.localeCompare(b.month))

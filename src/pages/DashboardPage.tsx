@@ -12,11 +12,22 @@ import { QuickCheckCard } from '@/components/dashboard/QuickCheckCard'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { UpcomingDebits } from '@/components/dashboard/UpcomingDebits'
 import { WhereYourLootGoes } from '@/components/dashboard/WhereYourLootGoes'
+import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanner'
+import { PeopleChips } from '@/components/dashboard/PeopleChips'
+import { SafeToSpendHero } from '@/components/dashboard/SafeToSpendHero'
+import { SeasonalCards } from '@/components/dashboard/SeasonalCards'
+import { ComingUpCosts } from '@/components/dashboard/ComingUpCosts'
+import { BudgetsCard } from '@/components/spending/BudgetsCard'
+import { PaydayMomentCard, PaydayPromptCard } from '@/components/spending/PaydayCards'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { useLogSpendSheet } from '@/context/LogSpendContext'
 import { useExpenses } from '@/hooks/useExpenses'
 import { useHouseholdView } from '@/hooks/useHousehold'
 import { useProfile } from '@/hooks/useProfile'
 import { useSnapshots } from '@/hooks/useSnapshots'
+import { useOnceOffIncome } from '@/hooks/usePeople'
+import { useSafeToSpend } from '@/hooks/useSpendEntries'
+import { inCycle } from '@/lib/cycle'
 import { GROWTH_CATEGORIES } from '@/lib/categories'
 import {
   disposableIncome,
@@ -33,6 +44,15 @@ export function DashboardPage() {
   const household = useHouseholdView()
   const { data: snapshots = [] } = useSnapshots(6)
   const { data: ownExpenses = [] } = useExpenses()
+  // Phase 6 (live_cycle): Safe to spend, budgets and payday cycles. Off → `cycle` is the calendar month and the page
+  // renders exactly as before.
+  const live = useSafeToSpend()
+  const { cycle } = live
+  const { openLog } = useLogSpendSheet()
+  const { data: onceOff = [] } = useOnceOffIncome()
+  const expectedIncome = onceOff
+    .filter((i) => !i.received_on && inCycle(new Date(`${i.expected_on}T12:00:00`), cycle))
+    .map((i) => ({ label: i.label, amount: i.amount }))
 
   // In household view these are the combined figures for everyone; otherwise just the user's own.
   const expenses = household.combinedExpenses
@@ -60,6 +80,16 @@ export function DashboardPage() {
   const needsIncome = profile !== undefined && profile.net_income <= 0
   const today = new Date()
   const monthName = today.toLocaleDateString('en-ZA', { month: 'long' })
+  // The live hero is personal (D9): household view keeps the budget-only "Available" hero.
+  const showLive = live.live && !household.active
+  const showPaydayPrompt = live.live && profile != null && profile.payday_day == null && !profile.payday_prompt_dismissed_at
+  const daysIntoCycle = Math.round((today.getTime() - cycle.start.getTime()) / 86_400_000)
+  const showPaydayMoment =
+    live.live &&
+    live.settings != null &&
+    !cycle.calendar &&
+    profile?.last_payday_seen !== cycle.key &&
+    (profile?.last_payday_seen != null || daysIntoCycle <= 2)
 
   return (
     <div className="animate-enter space-y-6">
@@ -116,6 +146,22 @@ export function DashboardPage() {
         </div>
       )}
 
+      {showPaydayMoment && live.settings && (
+        <PaydayMomentCard
+          cycle={cycle}
+          safe={live.safe}
+          settings={live.settings}
+          disposable={live.disposable}
+          buffer={live.buffer}
+          budgets={live.budgets}
+          entries={live.entries}
+        />
+      )}
+      <AnnouncementBanner />
+      {showPaydayPrompt && <PaydayPromptCard />}
+      {!household.active && <PeopleChips cycle={cycle} />}
+      <SeasonalCards />
+
       {isEmpty ? (
         <div className="card-elevated flex flex-col items-center gap-4 py-14 text-center">
           <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/12 text-primary">
@@ -135,16 +181,29 @@ export function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="lg:col-span-8" data-tutorial="dashboard-stats">
-            <AvailableLootHero
-              value={disposable}
-              delta={disposableDelta}
-              netIncome={netIncome}
-              committed={committed}
-              growing={growing}
-              health={health}
-              savingsRate={rate}
-              monthName={monthName}
-            />
+            {showLive ? (
+              <SafeToSpendHero
+                stats={live}
+                cycle={cycle}
+                netIncome={netIncome}
+                committed={committed}
+                growing={growing}
+                buffer={live.buffer}
+                budgets={live.budgets}
+                onLog={() => openLog()}
+              />
+            ) : (
+              <AvailableLootHero
+                value={disposable}
+                delta={disposableDelta}
+                netIncome={netIncome}
+                committed={committed}
+                growing={growing}
+                health={health}
+                savingsRate={rate}
+                monthName={monthName}
+              />
+            )}
           </div>
           <div className="lg:col-span-4" data-tutorial="dashboard-quick-actions">
             <QuickCheckCard />
@@ -175,12 +234,26 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-7">
-            <WhereYourLootGoes expenses={expenses} />
-          </div>
-          <div className="lg:col-span-5">
-            <UpcomingDebits expenses={expenses} />
-          </div>
+          {showLive ? (
+            <>
+              <div className="flex flex-col gap-4 lg:col-span-7">
+                <BudgetsCard budgets={live.budgets} spentByCategory={live.spentByCategory} cycle={cycle} />
+                <WhereYourLootGoes expenses={expenses} />
+              </div>
+              <div className="lg:col-span-5">
+                <UpcomingDebits expenses={expenses} cycle={cycle} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="lg:col-span-7">
+                <WhereYourLootGoes expenses={expenses} />
+              </div>
+              <div className="lg:col-span-5">
+                <UpcomingDebits expenses={expenses} />
+              </div>
+            </>
+          )}
 
           {/* Forecast, score, goals, close and briefing are personal — they always use the user's own numbers. */}
           <div className="lg:col-span-7">
@@ -189,6 +262,9 @@ export function DashboardPage() {
               expenses={ownExpenses}
               netIncome={profile?.net_income ?? 0}
               currentDisposable={disposableIncome(profile?.net_income ?? 0, ownExpenses)}
+              cycle={cycle}
+              live={live.live}
+              expectedIncome={expectedIncome}
             />
           </div>
           <div className="lg:col-span-5">
@@ -199,6 +275,7 @@ export function DashboardPage() {
             <RecentActivity expenses={expenses} />
           </div>
           <div className="flex flex-col gap-4 lg:col-span-5">
+            <ComingUpCosts />
             <BriefingCard snapshots={snapshots} />
             <MonthlyCloseCard />
           </div>

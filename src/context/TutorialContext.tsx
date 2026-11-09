@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { TUTORIAL_STEPS } from '@/lib/tutorial-steps'
+import { useFeatureFlags } from '@/hooks/useFeatures'
+import { tutorialStepsFor, type TutorialStep } from '@/lib/tutorial-steps'
 
 interface TutorialContextValue {
   active: boolean
   stepIndex: number
   totalSteps: number
+  /** The tour for this person's feature flags. */
+  steps: TutorialStep[]
   start: () => void
   next: () => void
   back: () => void
@@ -17,16 +20,19 @@ const TutorialContext = createContext<TutorialContextValue | null>(null)
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+  const { data: flags } = useFeatureFlags()
+  const steps = tutorialStepsFor(flags)
 
   const value: TutorialContextValue = {
     active,
     stepIndex,
-    totalSteps: TUTORIAL_STEPS.length,
+    totalSteps: steps.length,
+    steps,
     start: () => {
       setStepIndex(0)
       setActive(true)
     },
-    next: () => setStepIndex((i) => Math.min(i + 1, TUTORIAL_STEPS.length - 1)),
+    next: () => setStepIndex((i) => Math.min(i + 1, steps.length - 1)),
     back: () => setStepIndex((i) => Math.max(i - 1, 0)),
     close: () => setActive(false),
   }

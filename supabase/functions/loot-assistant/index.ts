@@ -1,148 +1,68 @@
-// Loot Assistant — Supabase Edge Function (Deno runtime)
+// Loot — loot-assistant (Ask Loot) — Supabase Edge Function (Deno). Reworked in Phase 6 B6.
 //
-// Proxies chat messages to the Gemini API so the API key never reaches the client.
-// Deploy with: supabase functions deploy loot-assistant
-// Then set the secret: supabase secrets set GEMINI_API_KEY=your-key-here
+// Relays a conversation to Gemini with Loot's tool declarations. Tool calls go back to the browser, which runs them
+// with the person's own data and src/lib, then calls again with kind "continue". The model never computes money
+// (Rule 25). Every request is counted with use_assistant_question(), using the person's own token (daily cap).
 //
-// Request body:
-//   {
-//     message: string                                   — the user's new message
-//     history: { role: 'user' | 'assistant', content: string }[]  — prior turns, oldest first
-//     financialContext: string                          — a compact plain-text summary of the
-//                                                          user's own numbers (disposable income,
-//                                                          savings rate, top expenses, debts,
-//                                                          goals, tax profile) assembled client-side.
-//                                                          Never raw bank transactions — see
-//                                                          Business Rule 13 in LOOT-FEATURES.md.
-//   }
+// Deploy: npx supabase functions deploy loot-assistant   (Verify JWT ON)
+// Secrets: GEMINI_API_KEY. Turn on Gemini billing before switching the `assistant` flag on for everyone (D14).
 //
-// Response body: { reply: string } on success, { error: string } on failure.
+// Request:  { kind: 'question' | 'continue', contents: GeminiContent[], financialContext: string }
+// Response: { reply, left } | { functionCalls, modelContent, left } | { limit: true, reply } | { error }
 
-const GEMINI_MODEL = "gemini-flash-latest";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { CORS_HEADERS, json } from "../_shared/http.ts";
+import { GEMINI_MODEL, handleAssistant, type AssistantBody } from "./handler.ts";
+
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const SYSTEM_PROMPT = `You are the Loot Assistant, a friendly and knowledgeable personal finance helper inside Loot, a South African personal finance app. Loot's whole purpose is answering "how much money do you actually have left this month" — disposable income after every commitment.
-
-Ground every answer in the user's own numbers when they're given below — don't make up figures. Speak plainly, keep answers concise (a few short paragraphs at most, use lists sparingly), and default to South African context: Rands (R), SARS tax rules, local banks (FNB, Capitec), and SA cost-of-living norms. You are not a licensed financial advisor — for anything with real legal or tax consequences, suggest the user verify with a professional or SARS eFiling, but don't be overly cautious about everyday budgeting questions.
-
-The user's current financial snapshot:
-{{CONTEXT}}
-
-If the snapshot above is empty or a question falls outside it, answer from general South African personal finance knowledge instead of refusing.`;
-
-interface AssistantRequest {
-  message: string;
-  history: { role: "user" | "assistant"; content: string }[];
-  financialContext: string;
-}
-
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: CORS_HEADERS });
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+  if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  const url = Deno.env.get("SUPABASE_URL");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!apiKey || !url || !anon) return json({ error: "Ask Loot isn’t set up on this server yet." }, 500);
+
+  let body: AssistantBody = {};
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid JSON body." }, 400);
   }
 
   try {
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({
-          error: "GEMINI_API_KEY is not configured on this Supabase project.",
-        }),
-        {
-          status: 500,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const body = (await req.json()) as AssistantRequest;
-    if (!body.message || typeof body.message !== "string") {
-      return new Response(
-        JSON.stringify({ error: 'Missing "message" in request body.' }),
-        {
-          status: 400,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const history = Array.isArray(body.history) ? body.history : [];
-    const contents = [
-      ...history.map((turn) => ({
-        role: turn.role === "assistant" ? "model" : "user",
-        parts: [{ text: turn.content }],
-      })),
-      { role: "user", parts: [{ text: body.message }] },
-    ];
-
-    const systemInstruction = {
-      parts: [
-        {
-          text: SYSTEM_PROMPT.replace(
-            "{{CONTEXT}}",
-            body.financialContext || "(no financial data available yet)",
-          ),
-        },
-      ],
-    };
-
-    const geminiResponse = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        systemInstruction,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
-      }),
-    });
-
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
-      return new Response(
-        JSON.stringify({ error: `Gemini API error: ${errText}` }),
-        {
-          status: 502,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const data = await geminiResponse.json();
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p: { text?: string }) => p.text ?? "")
-        .join("") ?? "";
-
-    if (!reply) {
-      return new Response(
-        JSON.stringify({ error: "Gemini returned an empty response." }),
-        {
-          status: 502,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    return new Response(JSON.stringify({ reply }), {
-      status: 200,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(
-      JSON.stringify({
-        error: err instanceof Error ? err.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    const result = await handleAssistant(req.headers.get("Authorization"), body, {
+      async useQuestion(token, kind) {
+        // The user's own client, so auth.uid() inside the RPC is them.
+        const db = createClient(url, anon, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data, error } = await db.rpc("use_assistant_question", { p_kind: kind });
+        if (error) throw new Error(error.message);
+        return Number(data);
       },
-    );
+      async gemini(payload) {
+        const res = await fetch(GEMINI_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: JSON.stringify(payload),
+        });
+        const text = await res.text();
+        if (!res.ok) console.error("Gemini error", res.status, text.slice(0, 500));
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = null;
+        }
+        return { ok: res.ok, status: res.status, json: parsed };
+      },
+    });
+    return json(result.body, result.status);
+  } catch (err) {
+    console.error("loot-assistant crashed", err);
+    return json({ error: "Something went wrong. Try again." }, 500);
   }
 });

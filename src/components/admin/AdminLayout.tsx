@@ -1,5 +1,22 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { ArrowLeft, ChevronRight, Flag, LayoutGrid, Loader2, LogOut, Menu, ScrollText, ShieldCheck, Users, X, type LucideIcon } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChartColumn,
+  ChevronRight,
+  Flag,
+  LayoutGrid,
+  Loader2,
+  LogOut,
+  Megaphone,
+  Menu,
+  MessageSquare,
+  ScrollText,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -7,38 +24,51 @@ import { AdminTwoFactor } from '@/components/admin/AdminTwoFactor'
 import { Glass, LiquidGlassDefs } from '@/components/ui/Glass'
 import { Logo } from '@/components/ui/Logo'
 import { useAdminMe, useAdminOverview } from '@/hooks/useAdmin'
+import { useUnansweredFeedback } from '@/hooks/useAdminV2'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { ROLE_LABEL, roleAtLeast, type AdminRole } from '@/lib/admin'
 import { initials } from '@/lib/utils'
 
 interface AdminNavItem {
-  to: '/admin' | '/admin/users' | '/admin/team' | '/admin/flags' | '/admin/audit'
+  to:
+    | '/admin'
+    | '/admin/analytics'
+    | '/admin/users'
+    | '/admin/feedback'
+    | '/admin/team'
+    | '/admin/announcements'
+    | '/admin/flags'
+    | '/admin/content'
+    | '/admin/audit'
   label: string
   short: string
   icon: LucideIcon
   min: AdminRole
 }
 
+const OVERVIEW: AdminNavItem = { to: '/admin', label: 'Overview', short: 'Overview', icon: LayoutGrid, min: 'viewer' }
+const USERS: AdminNavItem = { to: '/admin/users', label: 'Users', short: 'Users', icon: Users, min: 'viewer' }
+const INBOX: AdminNavItem = { to: '/admin/feedback', label: 'Feedback', short: 'Inbox', icon: MessageSquare, min: 'viewer' }
+const ANNOUNCE: AdminNavItem = { to: '/admin/announcements', label: 'Announcements', short: 'Announce', icon: Megaphone, min: 'viewer' }
+
+// Phase 6 B7 (§5): Insights · People · Engage · Controls.
 const GROUPS: { label: string; items: AdminNavItem[] }[] = [
-  { label: 'Insights', items: [{ to: '/admin', label: 'Overview', short: 'Overview', icon: LayoutGrid, min: 'viewer' }] },
-  {
-    label: 'People',
-    items: [
-      { to: '/admin/users', label: 'Users', short: 'Users', icon: Users, min: 'viewer' },
-      { to: '/admin/team', label: 'Team', short: 'Team', icon: ShieldCheck, min: 'owner' },
-    ],
-  },
+  { label: 'Insights', items: [OVERVIEW, { to: '/admin/analytics', label: 'Analytics', short: 'Analytics', icon: ChartColumn, min: 'viewer' }] },
+  { label: 'People', items: [USERS, INBOX, { to: '/admin/team', label: 'Team', short: 'Team', icon: ShieldCheck, min: 'owner' }] },
+  { label: 'Engage', items: [ANNOUNCE] },
   {
     label: 'Controls',
     items: [
       { to: '/admin/flags', label: 'Feature flags', short: 'Flags', icon: Flag, min: 'viewer' },
+      { to: '/admin/content', label: 'Content', short: 'Content', icon: SlidersHorizontal, min: 'viewer' },
       { to: '/admin/audit', label: 'Audit log', short: 'Audit', icon: ScrollText, min: 'viewer' },
     ],
   },
 ]
 
-const TABS: AdminNavItem[] = [GROUPS[0].items[0], GROUPS[1].items[0], GROUPS[2].items[0], GROUPS[2].items[1]]
+/** Phone tabs: Overview · Users · Inbox · Announce; the rest is in the menu. */
+const TABS: AdminNavItem[] = [OVERVIEW, USERS, INBOX, ANNOUNCE]
 
 function isActive(pathname: string, to: string) {
   return to === '/admin' ? pathname === '/admin' || pathname === '/admin/' : pathname === to || pathname.startsWith(`${to}/`)
@@ -69,6 +99,7 @@ function AdminSidebar({ role }: { role: AdminRole }) {
   const { data: profile } = useProfile()
   const reduceMotion = useReducedMotion()
   const attention = useAttentionCount()
+  const unanswered = useUnansweredFeedback()
 
   return (
     <aside className="sticky top-0 z-20 hidden h-dvh w-[256px] shrink-0 p-3 md:block">
@@ -109,6 +140,11 @@ function AdminSidebar({ role }: { role: AdminRole }) {
                         {item.to === '/admin/users' && attention > 0 && (
                           <span className="tnum relative ml-auto rounded-full bg-caution/15 px-1.5 text-[11px] font-semibold text-caution" title="Accounts that need attention">
                             {attention}
+                          </span>
+                        )}
+                        {item.to === '/admin/feedback' && unanswered > 0 && (
+                          <span className="tnum relative ml-auto rounded-full bg-alert/15 px-1.5 text-[11px] font-semibold text-alert" title="Unanswered messages">
+                            {unanswered}
                           </span>
                         )}
                       </Link>

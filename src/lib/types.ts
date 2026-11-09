@@ -21,6 +21,15 @@ export interface Profile {
   push_token: string | null
   tutorial_completed: boolean
   feature_discovery: Record<string, unknown>
+  /** Migration 026 — payday cycles. Missing until the migration has run, so treat as optional. */
+  payday_day?: number | null
+  payday_rule?: string | null
+  payday_prompt_dismissed_at?: string | null
+  last_payday_seen?: string | null
+  /** Migration 027 — per-kind push switches; a missing key means on. */
+  notification_prefs?: Record<string, boolean> | null
+  /** Migration 028 — the user's own PayShap ShapID (for split requests). */
+  payshap_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -82,6 +91,9 @@ export interface Expense {
   original_amount: number | null
   original_currency: string | null
   exchange_rate: number | null
+  /** Migration 030 — the person's own expected yearly increase (month 1–12, percent). */
+  increase_month?: number | null
+  increase_pct?: number | null
   deleted_at: string | null
   created_at: string
   updated_at: string
@@ -98,6 +110,8 @@ export type NewExpense = Pick<Expense, 'name' | 'category' | 'amount' | 'frequen
       | 'original_amount'
       | 'original_currency'
       | 'exchange_rate'
+      | 'increase_month'
+      | 'increase_pct'
     >
   >
 
@@ -347,6 +361,19 @@ export const NOTIFICATION_KINDS = [
   'score_change',
   'household_invite',
   'system',
+  // Phase 6 — generated on the server (notify-daily) or by admin actions; see server-notifications.ts
+  'payday',
+  'debit_orders',
+  'pace',
+  'budget_low',
+  'wishlist_ready',
+  'renewal',
+  'price_change',
+  'stokvel',
+  'split',
+  'challenge',
+  'announcement',
+  'feedback_reply',
 ] as const
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]
 
@@ -369,6 +396,8 @@ export interface AppNotification {
   link: string | null
   dedupe_key: string
   read_at: string | null
+  /** Migration 027 — when push-dispatch sent it (null = not pushed). */
+  pushed_at?: string | null
   created_at: string
   updated_at: string
 }

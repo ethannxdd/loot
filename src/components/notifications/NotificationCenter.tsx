@@ -1,4 +1,5 @@
 import { useBudgeScores } from '@/hooks/useBudgeScore'
+import { useLiveCycle } from '@/hooks/useCycle'
 import { useCurrentMonthSnapshot } from '@/hooks/useMonthlyClose'
 import { useMonthlyBriefings } from '@/hooks/useMonthlyBriefing'
 import { useExpenses } from '@/hooks/useExpenses'
@@ -25,7 +26,8 @@ export function NotificationCenter() {
   const { data: briefings = [] } = useMonthlyBriefings()
   const { data: scores = [] } = useBudgeScores()
 
-  const forecast = computeForecast(snapshots, expenses, profile?.net_income ?? 0)
+  const { cycle, live } = useLiveCycle()
+  const forecast = computeForecast(snapshots, expenses, profile?.net_income ?? 0, new Date(), cycle.key)
   const latestScore = scores.length > 0 ? scores[scores.length - 1] : null
   const previousScore = scores.length > 1 ? scores[scores.length - 2] : null
 
@@ -40,6 +42,7 @@ export function NotificationCenter() {
       latestBriefingMonth: briefings[0]?.month ?? null,
       latestScore,
       previousScore,
+      cycle: live ? { key: cycle.key, start: cycle.start, calendar: cycle.calendar, shortLabel: cycle.shortLabel } : undefined,
     },
     Boolean(profile) && !expensesLoading
   )

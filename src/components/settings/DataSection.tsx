@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/hooks/useAuth'
 import { useDeleteAccount, useExportData, useResetAllData } from '@/hooks/useAccountData'
+import { useAssistantUsage } from '@/hooks/useFuture'
 import { SettingsHeading } from '@/components/settings/SettingsHeading'
 
 export function DataSection() {
@@ -12,6 +13,7 @@ export function DataSection() {
   const exportData = useExportData()
   const resetData = useResetAllData()
   const deleteAccount = useDeleteAccount()
+  const { data: assistantUsage } = useAssistantUsage()
   const navigate = useNavigate()
   const [resetOpen, setResetOpen] = useState(false)
   const [phrase, setPhrase] = useState('')
@@ -45,6 +47,14 @@ export function DataSection() {
     <>
       <section className="card space-y-4">
         <SettingsHeading icon={Database} title="Your data" color="var(--label-3)" />
+        {assistantUsage && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-fill px-3.5 py-3">
+            <p className="text-[14px]">Ask Loot today</p>
+            <p className="tnum text-[14px] font-semibold">
+              {assistantUsage.used} of {assistantUsage.cap} questions
+            </p>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-[15px] font-medium">Export everything</p>

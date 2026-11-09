@@ -29,6 +29,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { ActionDialog, AdminCard, Avatar, IconTile, KV } from '@/components/admin/AdminUi'
+import { UserPhase6Card } from '@/components/admin/Phase6Cards'
 import { Segmented } from '@/components/ui/Segmented'
 import { Select } from '@/components/ui/Select'
 import { useAdminAccountAction, useAdminDbAction, useAdminMe, useAdminUser, useSetOverride } from '@/hooks/useAdmin'
@@ -693,6 +694,7 @@ export function AdminUserPage({ userId }: { userId: string }) {
           <AdminCard title="Feature access" sub="Override a flag for just this person">
             <FeatureAccess d={d} canEdit={roleAtLeast(role, 'support')} />
           </AdminCard>
+          <UserPhase6Card d={d} role={role ?? null} />
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/hooks/useAuth'
+import { useFeature } from '@/hooks/useFeatures'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { CURRENCIES, CURRENCY_LABELS, PAY_FREQUENCIES, type CurrencyCode, type PayFrequency, type Profile } from '@/lib/types'
 import { SettingsHeading } from '@/components/settings/SettingsHeading'
@@ -19,17 +20,28 @@ export function ProfileSection({ profile }: { profile: Profile }) {
   const [name, setName] = useState(profile.display_name ?? '')
   const [currency, setCurrency] = useState<string>(profile.currency_code)
   const [frequency, setFrequency] = useState<string>(profile.pay_frequency)
+  // Phase 6 B3: the person's own PayShap ShapID, added to split payment requests (only with the splits flag).
+  const splits = useFeature('splits')
+  const [shapId, setShapId] = useState(profile.payshap_id ?? '')
+  const shapValid = shapId.trim() === '' || /^[A-Za-z0-9@._+-]{2,40}$/.test(shapId.trim())
 
   const dirty =
     name.trim() !== (profile.display_name ?? '') ||
     currency !== profile.currency_code ||
-    frequency !== profile.pay_frequency
+    frequency !== profile.pay_frequency ||
+    (splits && shapId.trim() !== (profile.payshap_id ?? ''))
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim()) return toast.error('Your name can’t be empty.')
+    if (!shapValid) return toast.error('A ShapID is letters, numbers and @ . - _ only.')
     update.mutate(
-      { display_name: name.trim(), currency_code: currency, pay_frequency: frequency },
+      {
+        display_name: name.trim(),
+        currency_code: currency,
+        pay_frequency: frequency,
+        ...(splits ? { payshap_id: shapId.trim() || null } : {}),
+      },
       { onSuccess: () => toast.success('Profile saved') },
     )
   }
@@ -77,6 +89,15 @@ export function ProfileSection({ profile }: { profile: Profile }) {
           />
         </div>
       </div>
+      {splits && (
+        <div>
+          <label className="field-label" htmlFor="settings-shapid">
+            PayShap ShapID (optional)
+          </label>
+          <input id="settings-shapid" value={shapId} maxLength={40} onChange={(e) => setShapId(e.target.value)} placeholder="0821234567@yourbank" />
+          <p className="mt-1.5 text-[13px] text-muted-foreground">Added to payment requests you send from Splits, so friends can pay you back instantly.</p>
+        </div>
+      )}
       {currency !== profile.currency_code && (
         <p className="text-[13px] text-muted-foreground">
           Changing currency relabels your figures — it doesn’t convert them. Update your income and expenses if the amounts

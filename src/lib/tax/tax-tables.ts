@@ -66,8 +66,20 @@ export function getCurrentTaxYear(date = new Date()): string {
   return `${startYear}/${String((startYear + 1) % 100).padStart(2, '0')}`
 }
 
+/**
+ * Tables published through the admin Content manager (Phase 6, `tax_tables:<year>`), already validated by
+ * src/lib/content.ts. Set once by the app shell; when empty (or a year is missing) the bundled tables above apply,
+ * so behaviour without published content is unchanged.
+ */
+let published: Record<string, TaxTable> = {}
+
+export function setPublishedTaxTables(tables: Record<string, TaxTable>) {
+  published = tables
+}
+
 /** Looks up a tax table, falling back to the latest known year if the exact year isn't tabled yet. */
 export function getTaxTable(taxYear: string): TaxTable {
+  if (published[taxYear]) return published[taxYear]
   if (TAX_TABLES[taxYear]) return TAX_TABLES[taxYear]
   const fallback = KNOWN_YEARS[KNOWN_YEARS.length - 1]
   return TAX_TABLES[fallback]

@@ -1,12 +1,14 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ChevronRight, LogOut, Menu, ShieldCheck, X } from 'lucide-react'
+import { ChevronRight, LogOut, Menu, MessageSquare, ShieldCheck, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAdminMe } from '@/hooks/useAdmin'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
-import { isActivePath, NAV_GROUPS } from '@/lib/nav'
+import { useFeature } from '@/hooks/useFeatures'
+import { useNav } from '@/hooks/useNav'
+import { isActivePath } from '@/lib/nav'
 import { initials } from '@/lib/utils'
 
 /**
@@ -23,6 +25,8 @@ export function MobileMenu() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const reduceMotion = useReducedMotion()
   const { data: adminMe } = useAdminMe()
+  const { groups: navGroups } = useNav()
+  const feedback = useFeature('feedback')
   const closeRef = useRef<HTMLButtonElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
@@ -48,7 +52,7 @@ export function MobileMenu() {
   }, [open])
 
   const settingsActive = isActivePath(pathname, '/settings')
-  const groups = NAV_GROUPS.filter((g) => g.items.some((i) => i.to !== '/settings'))
+  const groups = navGroups.filter((g) => g.items.some((i) => i.to !== '/settings'))
     .map((g) => ({ ...g, items: g.items.filter((i) => i.to !== '/settings') }))
 
   const sheet = (
@@ -138,6 +142,20 @@ export function MobileMenu() {
                   </div>
                 </div>
               ))}
+
+              {feedback && (
+                <Link
+                  to="/settings"
+                  search={{ support: 'new' }}
+                  className="flex min-h-[50px] items-center gap-3 overflow-hidden rounded-2xl bg-surface px-3.5 text-[16px] font-medium text-foreground active:bg-fill"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-fill">
+                    <MessageSquare size={17} strokeWidth={1.9} />
+                  </span>
+                  <span className="flex-1">Send feedback</span>
+                  <ChevronRight size={16} strokeWidth={2} className="text-text-subtle" />
+                </Link>
+              )}
 
               {adminMe?.role && (
                 <div>

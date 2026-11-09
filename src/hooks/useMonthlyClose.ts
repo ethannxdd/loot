@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { currentMonthKey } from '@/lib/money'
 import { upsertCurrentMonthSnapshot } from '@/lib/snapshot'
 import { supabase } from '@/lib/supabase'
 import type { Expense, MonthlySnapshot, Profile } from '@/lib/types'
 import { useAuth } from './useAuth'
+import { useLiveCycle } from './useCycle'
 import { snapshotsQueryKey } from './useSnapshots'
 
-/** The current month's snapshot row (locked or not) — used to know whether this month has been closed. */
+/**
+ * The current month's snapshot row (locked or not) — used to know whether this month has been closed. With payday
+ * cycles on (Phase 6) "this month" is the current cycle, so the close happens on payday instead of the 1st.
+ */
 export function useCurrentMonthSnapshot() {
   const { user } = useAuth()
-  const month = currentMonthKey()
+  const month = useLiveCycle().cycle.key
   return useQuery({
     queryKey: ['monthly_snapshot', user?.id, month],
     queryFn: async (): Promise<MonthlySnapshot | null> => {
@@ -35,11 +38,11 @@ export function useCurrentMonthSnapshot() {
 export function useLockCurrentMonth() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const month = currentMonthKey()
+  const month = useLiveCycle().cycle.key
   return useMutation({
     mutationFn: async ({ profile, expenses, notes }: { profile: Profile; expenses: Expense[]; notes: string }) => {
       if (!user) throw new Error('Not signed in')
-      await upsertCurrentMonthSnapshot(profile, expenses)
+      await upsertCurrentMonthSnapshot(profile, expenses, month)
       const { data, error } = await supabase
         .from('monthly_snapshots')
         .update({ locked_at: new Date().toISOString(), close_notes: notes || null })

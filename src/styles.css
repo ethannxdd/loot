@@ -780,6 +780,39 @@ label.field-label,
   margin-bottom: 6px;
 }
 
+/* Log sheet (Phase 6) — the one new surface: a bottom sheet on phones, a floating panel on desktop. */
+.log-sheet {
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+.spend-amount-input {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.spend-amount-input:focus,
+.spend-amount-input:focus-visible {
+  outline: none;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+/* Budget progress track. */
+.budget-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+
 }
 
 /* ==========================================================================

@@ -1,63 +1,12 @@
-/** The 25-category ruleset — see LOOT-SCHEMA.md "Quick reference — all 25 categories". */
-export const EXPENSE_CATEGORIES = [
-  'housing',
-  'transport',
-  'vehicle_finance',
-  'insurance',
-  'medical_aid',
-  'debt_repayments',
-  'groceries',
-  'eating_out',
-  'coffee_drinks',
-  'household',
-  'clothing_shopping',
-  'health_beauty',
-  'subscriptions',
-  'entertainment',
-  'tech_gadgets',
-  'phone_airtime',
-  'giving_charity',
-  'education',
-  'childcare',
-  'pets',
-  'savings',
-  'investments',
-  'side_business',
-  'travel_holidays',
-  'government_admin',
-  'other',
-] as const
+import {
+  CATEGORY_LABELS,
+  EXPENSE_CATEGORIES,
+  GROWTH_CATEGORIES,
+  categoryLabel,
+  type ExpenseCategory,
+} from './category-data'
 
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
-
-export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  housing: 'Housing',
-  transport: 'Transport',
-  vehicle_finance: 'Vehicle finance',
-  insurance: 'Insurance',
-  medical_aid: 'Medical aid',
-  debt_repayments: 'Debt repayments',
-  groceries: 'Groceries',
-  eating_out: 'Eating out',
-  coffee_drinks: 'Coffee & drinks',
-  household: 'Household',
-  clothing_shopping: 'Clothing & shopping',
-  health_beauty: 'Health & beauty',
-  subscriptions: 'Subscriptions',
-  entertainment: 'Entertainment',
-  tech_gadgets: 'Tech & gadgets',
-  phone_airtime: 'Phone & airtime',
-  giving_charity: 'Giving & charity',
-  education: 'Education',
-  childcare: 'Childcare',
-  pets: 'Pets',
-  savings: 'Savings',
-  investments: 'Investments',
-  side_business: 'Side business',
-  travel_holidays: 'Travel & holidays',
-  government_admin: 'Government & admin',
-  other: 'Other',
-}
+export { CATEGORY_LABELS, EXPENSE_CATEGORIES, GROWTH_CATEGORIES, categoryLabel, type ExpenseCategory }
 
 import {
   Baby,
@@ -106,6 +55,7 @@ export const CATEGORY_ICONS: Record<ExpenseCategory, LucideIcon> = {
   tech_gadgets: Laptop,
   phone_airtime: Smartphone,
   giving_charity: HeartHandshake,
+  family_support: HeartHandshake,
   education: GraduationCap,
   childcare: Baby,
   pets: PawPrint,
@@ -121,8 +71,6 @@ export function categoryIcon(category: string): LucideIcon {
   return CATEGORY_ICONS[category as ExpenseCategory] ?? MoreHorizontal
 }
 
-/** "Saving & Growing" categories — shown separately (in green) on the dashboard breakdown. */
-export const GROWTH_CATEGORIES: ReadonlySet<ExpenseCategory> = new Set(['savings', 'investments'])
 
 /** Chart colour assigned per category, cycling through the 5 chart tokens. */
 const CHART_TOKENS = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const
@@ -132,8 +80,10 @@ export function categoryChartToken(category: string): (typeof CHART_TOKENS)[numb
   return CHART_TOKENS[index >= 0 ? index % CHART_TOKENS.length : 0]
 }
 
-export function categoryLabel(category: string): string {
-  return CATEGORY_LABELS[category as ExpenseCategory] ?? category
+
+/** One-line helper shown under the category picker for categories that need explaining. */
+export const CATEGORY_HINTS: Partial<Record<ExpenseCategory, string>> = {
+  family_support: 'Money you send to parents, siblings or other family.',
 }
 
 /** Savings goal categories — a smaller, purpose-oriented set. */
@@ -208,6 +158,7 @@ const CATEGORY_FAMILY: Partial<Record<ExpenseCategory, number>> = {
   phone_airtime: 7,
   education: 2,
   giving_charity: 5,
+  family_support: 5,
   government_admin: 7,
   other: 7,
 }

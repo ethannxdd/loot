@@ -1,0 +1,160 @@
+import type { SpendEntry } from './spending'
+
+/**
+ * Challenges (Phase 6 §4.8). Pure: templates, auto-checks from the spend log, 52-week amounts, streaks.
+ * Auto kinds need spend logging; without it they fall back to manual check-ins.
+ */
+
+export const CHALLENGE_KINDS = ['no_spend_weekend', '52_week', 'cook_at_home', 'custom'] as const
+export type ChallengeKind = (typeof CHALLENGE_KINDS)[number]
+
+export const CHALLENGE_TEMPLATES: Record<ChallengeKind, { title: string; line: string; days: number }> = {
+  no_spend_weekend: { title: 'No-spend weekend', line: 'Nothing on extras from Saturday to Sunday.', days: 2 },
+  '52_week': { title: '52-week challenge', line: 'Save R10 in week 1, R20 in week 2… R13 780 by the end.', days: 364 },
+  cook_at_home: { title: 'Cook at home week', line: 'No eating out for seven days.', days: 7 },
+  custom: { title: 'My challenge', line: 'Your own rule, with a daily check-in.', days: 30 },
+}
+
+/** Mirrors public.challenges — Migration 030. */
+export interface Challenge {
+  id: string
+  user_id: string
+  kind: ChallengeKind
+  title: string
+  starts_on: string
+  ends_on: string
+  settings: { base?: number; reverse?: boolean; dailyTarget?: number }
+  goal_id: string | null
+  status: 'active' | 'completed' | 'abandoned'
+  created_at: string
+  updated_at: string
+}
+
+export interface Checkin {
+  id: string
+  challenge_id: string
+  user_id: string
+  day: string
+  success: boolean
+  amount_saved: number
+  auto: boolean
+}
+
+/** Spend that breaks a no-spend day: extras, not essentials or budgets for necessities. */
+export const DISCRETIONARY: ReadonlySet<string> = new Set([
+  'eating_out',
+  'coffee_drinks',
+  'entertainment',
+  'clothing_shopping',
+  'tech_gadgets',
+  'travel_holidays',
+  'health_beauty',
+  'subscriptions',
+  'other',
+])
+
+const DAY = 86_400_000
+
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function parseDay(d: string): Date {
+  const [y, m, day] = d.split('-').map(Number)
+  return new Date(y, m - 1, day)
+}
+
+/** Every day of the challenge, as 'YYYY-MM-DD'. */
+export function challengeDays(c: Pick<Challenge, 'starts_on' | 'ends_on'>): string[] {
+  const out: string[] = []
+  for (let t = parseDay(c.starts_on).getTime(); t <= parseDay(c.ends_on).getTime(); t += DAY) out.push(dayKey(new Date(t)))
+  return out
+}
+
+/** The next Saturday–Sunday (today if it's the weekend). */
+export function nextWeekend(today = new Date()): { start: string; end: string } {
+  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const dow = d.getDay()
+  const toSat = dow === 6 ? 0 : dow === 0 ? -1 : 6 - dow
+  const sat = new Date(d.getTime() + toSat * DAY)
+  return { start: dayKey(sat), end: dayKey(new Date(sat.getTime() + DAY)) }
+}
+
+/** 52-week challenge: amount for week n (1–52). */
+export function weekAmount(n: number, base = 10, reverse = false): number {
+  const w = reverse ? 53 - n : n
+  return base * w
+}
+
+export function fiftyTwoWeekTotal(base = 10): number {
+  return base * ((52 * 53) / 2)
+}
+
+export function isAutoKind(kind: ChallengeKind): boolean {
+  return kind === 'no_spend_weekend' || kind === 'cook_at_home'
+}
+
+/** Whether a day passes, from the spend log. */
+export function dayPasses(kind: ChallengeKind, day: string, entries: SpendEntry[]): boolean {
+  const onDay = entries.filter((e) => !e.deleted_at && e.amount > 0 && dayKey(new Date(e.spent_at)) === day)
+  if (kind === 'cook_at_home') return !onDay.some((e) => e.category === 'eating_out')
+  if (kind === 'no_spend_weekend') return !onDay.some((e) => e.category === null || DISCRETIONARY.has(e.category))
+  return true
+}
+
+/**
+ * Auto check-ins for days that are over (before today) and not yet checked. Only for auto kinds, and only when the
+ * person logs spends (`logging`) — otherwise they check in by hand.
+ */
+export function autoCheckins(c: Challenge, checkins: Checkin[], entries: SpendEntry[], today: Date, logging: boolean): { day: string; success: boolean }[] {
+  if (!isAutoKind(c.kind) || !logging || c.status !== 'active') return []
+  const done = new Set(checkins.filter((k) => k.challenge_id === c.id).map((k) => k.day))
+  const todayKey = dayKey(today)
+  return challengeDays(c)
+    .filter((d) => d < todayKey && !done.has(d))
+    .map((d) => ({ day: d, success: dayPasses(c.kind, d, entries) }))
+}
+
+/** Consecutive successful days, counting back from the latest checked day. */
+export function streak(checkins: Checkin[]): number {
+  const sorted = [...checkins].sort((a, b) => b.day.localeCompare(a.day))
+  let n = 0
+  for (const k of sorted) {
+    if (!k.success) break
+    n++
+  }
+  return n
+}
+
+export function progress(c: Challenge, checkins: Checkin[]): { done: number; total: number; fraction: number; saved: number } {
+  const own = checkins.filter((k) => k.challenge_id === c.id)
+  const total = c.kind === '52_week' ? 52 : challengeDays(c).length
+  const done = own.filter((k) => k.success).length
+  return { done, total, fraction: total > 0 ? Math.min(1, done / total) : 0, saved: own.reduce((s, k) => s + Number(k.amount_saved), 0) }
+}
+
+/** Week number (1–52) of a 52-week challenge for a date. */
+export function weekOf(c: Pick<Challenge, 'starts_on'>, today = new Date()): number {
+  const days = Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - parseDay(c.starts_on).getTime()) / DAY)
+  return Math.min(52, Math.max(1, Math.floor(days / 7) + 1))
+}
+
+export function isOver(c: Pick<Challenge, 'ends_on'>, today = new Date()): boolean {
+  return dayKey(today) > c.ends_on
+}
+
+/** "Day 2 of No-spend weekend — keep it going." on challenge days (server). */
+export function challengeNotice(c: Challenge, today: Date): { kind: 'challenge'; title: string; body: string; link: string; dedupe_key: string } | null {
+  if (c.status !== 'active') return null
+  const key = dayKey(today)
+  const days = challengeDays(c)
+  const i = days.indexOf(key)
+  if (i < 0 || c.kind === '52_week' || c.kind === 'custom') return null
+  return {
+    kind: 'challenge',
+    title: c.title,
+    body: i === 0 ? `${c.title} starts today. You’ve got this.` : `Day ${i + 1} of ${c.title} — keep it going.`,
+    link: '/challenges',
+    dedupe_key: `challenge:${c.id}:${key}`,
+  }
+}

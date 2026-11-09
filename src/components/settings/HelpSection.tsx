@@ -1,14 +1,22 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronDown, HelpCircle, PlayCircle } from 'lucide-react'
 import { useTutorialContext } from '@/context/TutorialContext'
-import { NAV_GROUPS } from '@/lib/nav'
+import { useNav } from '@/hooks/useNav'
 import { SettingsHeading } from '@/components/settings/SettingsHeading'
 
 const GUIDE: Record<string, string> = {
   '/dashboard': 'Your monthly position at a glance, plus your Loot Score, forecast, close and briefing.',
   '/stats': 'Trends over time, category history, benchmarks and net worth.',
+  '/spending': 'Log what you spend as you go. Safe to spend and your budgets update straight away.',
+  '/stokvels': 'Your stokvels: contributions, whose turn it is, and when your payout lands.',
+  '/splits': 'Shared bills and IOUs. Send a payment request and settle up.',
   '/expenses': 'Every recurring cost, fixed and variable. Removed items wait in “Recently removed”.',
   '/goals': 'Savings targets with monthly contributions, a 24-month timeline and a shortfall check.',
+  '/wishlist': 'Cool off before you buy. When the wait is over, Loot checks it against that day’s numbers.',
+  '/tools': 'Calculators for the big decisions: car, rent vs buy, moving out, runway, Survive January and Black Friday.',
+  '/renewals': 'Insurance, contracts and licences that renew, plus announced price increases that affect you.',
+  '/challenges': 'No-spend weekends, the 52-week challenge and more. Move what you save into a goal.',
+  '/future': 'Your TFSA room this tax year, where your retirement savings are heading, and the real cost of a two-pot withdrawal.',
   '/checker': 'Ask “can I afford this?” — once-off or monthly — and get a straight answer.',
   '/statement': 'Upload a bank statement (PDF, CSV or OFX) for an instant category breakdown. Parsed in your browser.',
   '/planner': 'Sketch the life you want phase by phase and see the salary it needs, plus a debt-payoff planner (avalanche vs snowball).',
@@ -54,6 +62,7 @@ const FAQ: { q: string; a: string }[] = [
 
 export function HelpSection() {
   const { start } = useTutorialContext()
+  const { groups } = useNav()
 
   return (
     <section className="card space-y-5">
@@ -73,7 +82,7 @@ export function HelpSection() {
       <div className="border-t border-hairline pt-4">
         <h3 className="mb-2 text-[15px] font-semibold">Feature guide</h3>
         <ul className="-mx-2 space-y-0.5">
-          {NAV_GROUPS.flatMap((g) => g.items)
+          {groups.flatMap((g) => g.items)
             .filter((item) => GUIDE[item.to])
             .map((item) => {
               const Icon = item.icon

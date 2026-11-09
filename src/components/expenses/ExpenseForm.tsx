@@ -3,8 +3,11 @@ import { useState, type FormEvent } from 'react'
 import { Select } from '@/components/ui/Select'
 import { Segmented } from '@/components/ui/Segmented'
 import { SwitchRow } from '@/components/ui/Switch'
+import { useFeature } from '@/hooks/useFeatures'
 import { useProfile } from '@/hooks/useProfile'
-import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from '@/lib/categories'
+import { usePriceEvents } from '@/hooks/useStayAhead'
+import { matchingEvent } from '@/lib/stay-ahead'
+import { CATEGORY_HINTS, CATEGORY_LABELS, EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import {
   CURRENCIES,
   EXPENSE_FREQUENCIES,
@@ -64,6 +67,12 @@ export function ExpenseForm({
   const [notifyEnabled, setNotifyEnabled] = useState(initial?.notify_enabled ?? false)
   const [leadDays, setLeadDays] = useState(initial?.notify_lead_days ?? 3)
   const [workRelated, setWorkRelated] = useState(initial?.work_related ?? false)
+  // Phase 6 B5 (flag `renewals`): the person's own expected yearly increase, prefilled from a matching price event.
+  const renewalsOn = useFeature('renewals')
+  const { data: priceEvents = [] } = usePriceEvents()
+  const [incMonth, setIncMonth] = useState(initial?.increase_month ? String(initial.increase_month) : '')
+  const [incPct, setIncPct] = useState(initial?.increase_pct != null ? String(initial.increase_pct) : '')
+  const suggestion = renewalsOn && !initial?.increase_month ? matchingEvent({ category }, priceEvents) : null
   const [error, setError] = useState<string | null>(null)
 
   const currencyChoice = currency || homeCurrency
@@ -83,6 +92,9 @@ export function ExpenseForm({
     const due = dueDay ? Math.floor(Number(dueDay)) : null
     if (due !== null && (due < 1 || due > 31)) return setError('The due day must be between 1 and 31.')
     if (notifyEnabled && due === null) return setError('Add a due day so Loot knows when to remind you.')
+    const increaseMonth = renewalsOn && incMonth ? Number(incMonth) : null
+    const increasePct = renewalsOn && incPct !== '' ? Number(incPct) : null
+    if (increaseMonth && (increasePct === null || !Number.isFinite(increasePct))) return setError('Add how much it goes up by, or clear the month.')
 
     onSubmit({
       name: name.trim(),
@@ -98,6 +110,8 @@ export function ExpenseForm({
       original_amount: isForeign ? numericAmount : null,
       original_currency: isForeign ? currencyChoice : null,
       exchange_rate: isForeign ? numericRate : null,
+      // Only sent with the renewals flag on (the columns arrive with Migration 030).
+      ...(renewalsOn ? { increase_month: increaseMonth, increase_pct: increaseMonth ? increasePct : null } : {}),
     })
   }
 
@@ -196,6 +210,9 @@ export function ExpenseForm({
           onValueChange={setCategory}
           options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
         />
+        {CATEGORY_HINTS[category as ExpenseCategory] && (
+          <p className="mt-1.5 text-[13px] text-muted-foreground">{CATEGORY_HINTS[category as ExpenseCategory]}</p>
+        )}
       </div>
 
       {!compact && (
@@ -242,6 +259,46 @@ export function ExpenseForm({
               onChange={setWorkRelated}
             />
           </div>
+
+          {renewalsOn && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="field-label" htmlFor="expense-inc-month">
+                  Goes up every
+                </label>
+                <Select
+                  id="expense-inc-month"
+                  value={incMonth}
+                  placeholder="Doesn’t change"
+                  onValueChange={setIncMonth}
+                  options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2026, i, 1).toLocaleDateString('en-ZA', { month: 'long' }) }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="expense-inc-pct">
+                  By about (%)
+                </label>
+                <input id="expense-inc-pct" type="number" inputMode="decimal" min={-100} max={200} step="any" value={incPct} onChange={(e) => setIncPct(e.target.value)} />
+              </div>
+              {suggestion && !incMonth && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncMonth(String(new Date(`${suggestion.effective_on}T00:00:00`).getMonth() + 1))
+                    setIncPct(String(suggestion.change_pct))
+                  }}
+                  className="col-span-2 text-left text-[12.5px] font-semibold text-primary"
+                >
+                  Use “{suggestion.title}”: {suggestion.change_pct}% in {new Date(`${suggestion.effective_on}T00:00:00`).toLocaleDateString('en-ZA', { month: 'long' })}
+                </button>
+              )}
+              {incMonth && (
+                <button type="button" onClick={() => { setIncMonth(''); setIncPct('') }} className="col-span-2 text-left text-[12.5px] text-muted-foreground">
+                  Clear the increase
+                </button>
+              )}
+            </div>
+          )}
 
           {notifyEnabled && (
             <div>

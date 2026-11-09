@@ -1,0 +1,127 @@
+/**
+ * South African public holidays and working days (Public Holidays Act 36 of 1994).
+ *
+ * All dates are local calendar dates (midnight, no time zone maths) — the same convention as the rest of src/lib.
+ * Rule: when a public holiday falls on a Sunday, the Monday after it is a public holiday. If that Monday is already a
+ * holiday (Christmas on a Sunday → Monday is the Day of Goodwill), the next free weekday is used, which is how
+ * 27 Dec 2022 came about.
+ */
+
+export interface PublicHoliday {
+  date: Date
+  name: string
+  /** True for the Monday (or later day) that replaces a holiday falling on a Sunday. */
+  observed: boolean
+}
+
+/** Easter Sunday for a Gregorian year (anonymous Gregorian / Meeus–Jones–Butcher algorithm). */
+export function easterSunday(year: number): Date {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31)
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(year, month - 1, day)
+}
+
+const FIXED: { month: number; day: number; name: string }[] = [
+  { month: 0, day: 1, name: 'New Year’s Day' },
+  { month: 2, day: 21, name: 'Human Rights Day' },
+  { month: 3, day: 27, name: 'Freedom Day' },
+  { month: 4, day: 1, name: 'Workers’ Day' },
+  { month: 5, day: 16, name: 'Youth Day' },
+  { month: 7, day: 9, name: 'National Women’s Day' },
+  { month: 8, day: 24, name: 'Heritage Day' },
+  { month: 11, day: 16, name: 'Day of Reconciliation' },
+  { month: 11, day: 25, name: 'Christmas Day' },
+  { month: 11, day: 26, name: 'Day of Goodwill' },
+]
+
+export function dateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export function addDays(d: Date, days: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days)
+}
+
+export function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+const cache = new Map<number, PublicHoliday[]>()
+
+/** Every SA public holiday in `year`, including Sunday → Monday replacements, sorted by date. */
+export function publicHolidays(year: number): PublicHoliday[] {
+  const cached = cache.get(year)
+  if (cached) return cached
+
+  const easter = easterSunday(year)
+  const base: PublicHoliday[] = [
+    ...FIXED.map((h) => ({ date: new Date(year, h.month, h.day), name: h.name, observed: false })),
+    { date: addDays(easter, -2), name: 'Good Friday', observed: false },
+    { date: addDays(easter, 1), name: 'Family Day', observed: false },
+  ].sort((a, b) => a.date.getTime() - b.date.getTime())
+
+  const taken = new Set(base.map((h) => dateKey(h.date)))
+  const observed: PublicHoliday[] = []
+  for (const h of base) {
+    if (h.date.getDay() !== 0) continue
+    let next = addDays(h.date, 1)
+    while (taken.has(dateKey(next)) || next.getDay() === 0 || next.getDay() === 6) next = addDays(next, 1)
+    taken.add(dateKey(next))
+    observed.push({ date: next, name: `${h.name} (observed)`, observed: true })
+  }
+
+  const all = [...base, ...observed].sort((a, b) => a.date.getTime() - b.date.getTime())
+  cache.set(year, all)
+  return all
+}
+
+/** The holiday on this date, or null. */
+export function holidayOn(d: Date): PublicHoliday | null {
+  const key = dateKey(d)
+  return publicHolidays(d.getFullYear()).find((h) => dateKey(h.date) === key) ?? null
+}
+
+export function isPublicHoliday(d: Date): boolean {
+  return holidayOn(d) !== null
+}
+
+export function isWeekend(d: Date): boolean {
+  const day = d.getDay()
+  return day === 0 || day === 6
+}
+
+/** Monday–Friday and not a public holiday. */
+export function isWorkingDay(d: Date): boolean {
+  return !isWeekend(d) && !isPublicHoliday(d)
+}
+
+/** `d` itself if it's a working day, otherwise the closest working day before it. */
+export function previousWorkingDay(d: Date): Date {
+  let x = startOfDay(d)
+  while (!isWorkingDay(x)) x = addDays(x, -1)
+  return x
+}
+
+/** `d` itself if it's a working day, otherwise the closest working day after it. */
+export function nextWorkingDay(d: Date): Date {
+  let x = startOfDay(d)
+  while (!isWorkingDay(x)) x = addDays(x, 1)
+  return x
+}
+
+/** The last working day of a month (month is 0-based, like Date). */
+export function lastWorkingDay(year: number, month: number): Date {
+  return previousWorkingDay(new Date(year, month + 1, 0))
+}

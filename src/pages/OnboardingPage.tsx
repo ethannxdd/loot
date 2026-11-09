@@ -1,17 +1,40 @@
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { AuthShell } from '@/components/auth/AuthShell'
 import { BufferInput } from '@/components/ui/BufferInput'
 import { Segmented } from '@/components/ui/Segmented'
 import { Select } from '@/components/ui/Select'
+import { PaydayPicker } from '@/components/spending/PaydayPicker'
+import { useFeature } from '@/hooks/useFeatures'
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
+import { CATEGORY_LABELS, EXPENSE_CATEGORIES } from '@/lib/categories'
+import { cycleFor, DEFAULT_PAYDAY, paydayPatch, type PaydayValue } from '@/lib/cycle'
 import { monthlyIncomeAmount } from '@/lib/money'
 import { upsertCurrentMonthSnapshot } from '@/lib/snapshot'
+import { supabase } from '@/lib/supabase'
 import { formatCurrencyExact } from '@/lib/utils'
-import { CURRENCIES, CURRENCY_LABELS, PAY_FREQUENCIES, type CurrencyCode, type PayFrequency } from '@/lib/types'
+import { CURRENCIES, CURRENCY_LABELS, PAY_FREQUENCIES, type CurrencyCode, type Expense, type PayFrequency } from '@/lib/types'
 import { router } from '@/router'
 
-const TOTAL_STEPS = 3
+const TOTAL_STEPS = 4
+
+interface DebitRow {
+  key: string
+  name: string
+  category: string
+  amount: string
+  day: string
+  preset: boolean
+}
+
+/** Step 3 (Phase 6 §3.7): the five debit orders most South Africans have, each with an amount and a day. */
+const PRESET_DEBITS: DebitRow[] = [
+  { key: 'rent', name: 'Rent or bond', category: 'housing', amount: '', day: '1', preset: true },
+  { key: 'car', name: 'Car', category: 'vehicle_finance', amount: '', day: '1', preset: true },
+  { key: 'insurance', name: 'Insurance', category: 'insurance', amount: '', day: '1', preset: true },
+  { key: 'medical', name: 'Medical aid', category: 'medical_aid', amount: '', day: '1', preset: true },
+  { key: 'phone', name: 'Phone contract', category: 'phone_airtime', amount: '', day: '1', preset: true },
+]
 
 const FREQUENCY_LABELS: Record<PayFrequency, string> = {
   monthly: 'Monthly',
@@ -34,6 +57,10 @@ export function OnboardingPage() {
   const [grossIncome, setGrossIncome] = useState('')
   const [netIncome, setNetIncome] = useState('')
   const [safetyBufferPct, setSafetyBufferPct] = useState('12.5')
+  // Payday cycles (Phase 6) — only asked when the live_cycle flag is on, which also means Migration 026 has run.
+  const live = useFeature('live_cycle')
+  const [payday, setPayday] = useState<PaydayValue>(DEFAULT_PAYDAY)
+  const [debits, setDebits] = useState<DebitRow[]>(PRESET_DEBITS)
 
   const canAdvanceFromStep1 = displayName.trim().length > 0
   const canAdvanceFromStep2 =
@@ -44,6 +71,12 @@ export function OnboardingPage() {
   const toMonthly = (amount: string) => monthlyIncomeAmount(Number(amount) || 0, payFrequency)
   const bufferNumber = safetyBufferPct === '' ? 12.5 : Number(safetyBufferPct)
   const bufferValid = Number.isFinite(bufferNumber) && bufferNumber >= 0 && bufferNumber <= 50
+  const filledDebits = debits.filter((d) => Number(d.amount) > 0 && d.name.trim())
+  const debitsTotal = filledDebits.reduce((sum, d) => sum + Number(d.amount), 0)
+
+  function updateDebit(key: string, patch: Partial<DebitRow>) {
+    setDebits((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  }
 
   function goNext() {
     setError(null)
@@ -58,7 +91,9 @@ export function OnboardingPage() {
   async function finish() {
     setError(null)
     try {
+      const paydayFields = live ? { ...paydayPatch(payday), last_payday_seen: cycleFor(new Date(), paydayPatch(payday)).key } : {}
       const updated = await updateProfile.mutateAsync({
+        ...paydayFields,
         display_name: displayName.trim(),
         currency_code: currencyCode,
         pay_frequency: payFrequency,
@@ -68,8 +103,29 @@ export function OnboardingPage() {
         safety_buffer_pct: bufferNumber,
         onboarded_at: new Date().toISOString(),
       })
+      let saved: Expense[] = []
+      if (filledDebits.length > 0) {
+        const { data, error: debitError } = await supabase
+          .from('expenses')
+          .insert(
+            filledDebits.map((d) => ({
+              user_id: updated.id,
+              name: d.name.trim(),
+              category: d.category,
+              amount: Math.round(Number(d.amount) * 100) / 100,
+              frequency: 'monthly',
+              is_fixed: true,
+              due_day: Math.min(31, Math.max(1, Math.round(Number(d.day)) || 1)),
+            })),
+          )
+          .select()
+        // The profile is saved either way; debit orders can still be added on the Expenses page.
+        if (debitError) console.warn('Debit orders not saved', debitError)
+        else saved = data as Expense[]
+      }
       try {
-        await upsertCurrentMonthSnapshot(updated, [])
+        const key = live ? cycleFor(new Date(), paydayPatch(payday)).key : undefined
+        await upsertCurrentMonthSnapshot(updated, saved, key)
       } catch (snapshotError) {
         // The profile is saved; the first snapshot is recreated automatically when the app loads.
         console.warn('First snapshot failed', snapshotError)
@@ -93,10 +149,12 @@ export function OnboardingPage() {
   const STEP_COPY: Record<number, { title: string; subtitle: string }> = {
     1: { title: 'What should we call you?', subtitle: 'And which currency do you think in?' },
     2: { title: 'How does your pay work?', subtitle: 'Loot uses this to work out what you actually have left.' },
-    3: { title: 'Set your safety buffer', subtitle: 'A share of your take-home pay that Loot never counts as spendable.' },
+    3: { title: 'Your biggest debit orders', subtitle: 'What leaves your account every month. Skip any you don’t have.' },
+    4: { title: 'Set your safety buffer', subtitle: 'A share of your take-home pay that Loot never counts as spendable.' },
   }
   const netMonthly = toMonthly(netIncome)
   const bufferAmount = bufferValid ? (netMonthly * bufferNumber) / 100 : 0
+  const safeFromDayOne = netMonthly - debitsTotal - bufferAmount
 
   const preview = (
     <div className="space-y-4">
@@ -112,13 +170,21 @@ export function OnboardingPage() {
             <span className="tnum font-semibold">{netMonthly > 0 && bufferValid ? formatCurrencyExact(bufferAmount, currencyCode) : '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/60">Expenses</span>
-            <span className="text-white/60">Added next</span>
+            <span className="text-white/60">Debit orders</span>
+            <span className="tnum font-semibold">{debitsTotal > 0 ? formatCurrencyExact(debitsTotal, currencyCode) : step < 3 ? 'Next' : '—'}</span>
+          </div>
+          <div className="flex justify-between border-t border-white/10 pt-3">
+            <span className="text-white/80">Safe to spend</span>
+            <span className={`tnum font-bold ${safeFromDayOne < 0 ? 'text-[#ff6961]' : ''}`}>
+              {netMonthly > 0 ? formatCurrencyExact(safeFromDayOne, currencyCode) : '—'}
+            </span>
           </div>
         </div>
       </div>
       <p className="text-[14px] leading-relaxed text-white/50">
-        Next you’ll add your recurring costs, and Loot will show what’s left to spend.
+        {step < 3
+          ? 'Next you’ll add your biggest debit orders, and Loot will show what’s safe to spend.'
+          : 'Add everything else, like groceries, fuel and subscriptions, on the Expenses page once you’re in.'}
       </p>
     </div>
   )
@@ -194,10 +260,92 @@ export function OnboardingPage() {
             {Number(grossIncome) > 0 && Number(netIncome) > Number(grossIncome) && (
               <p className="text-[13px] font-medium text-caution">Your take-home is higher than your pay before tax. Double-check the two numbers.</p>
             )}
+            {live && (
+              <div className="border-t border-hairline pt-4">
+                <PaydayPicker value={payday} onChange={setPayday} idPrefix="onboarding-payday" />
+              </div>
+            )}
           </div>
         )}
 
         {step === 3 && (
+          <div className="space-y-3">
+            {debits.map((d) => (
+              <div key={d.key} className="grid grid-cols-[minmax(0,1fr)_6.5rem_4rem_auto] items-end gap-2">
+                {d.preset ? (
+                  <span className="truncate pb-3 text-[15px] font-medium">{d.name}</span>
+                ) : (
+                  <div className="min-w-0 space-y-1.5">
+                    <input
+                      aria-label="Debit order name"
+                      value={d.name}
+                      onChange={(e) => updateDebit(d.key, { name: e.target.value })}
+                      placeholder="Name"
+                    />
+                    <Select
+                      aria-label="Category"
+                      value={d.category}
+                      onValueChange={(v) => updateDebit(d.key, { category: v })}
+                      options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
+                    />
+                  </div>
+                )}
+                <div>
+                  <span className="field-label">Amount</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    aria-label={`${d.name || 'Debit order'} amount`}
+                    value={d.amount}
+                    onChange={(e) => updateDebit(d.key, { amount: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <span className="field-label">Day</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={31}
+                    aria-label={`${d.name || 'Debit order'} day of the month`}
+                    value={d.day}
+                    onChange={(e) => updateDebit(d.key, { day: e.target.value })}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDebits((rows) => rows.filter((r) => r.key !== d.key))}
+                  aria-label={`Remove ${d.name || 'debit order'}`}
+                  className="mb-1.5 grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-fill hover:text-foreground"
+                >
+                  <X size={15} strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setDebits((rows) => [
+                  ...rows,
+                  { key: `custom-${rows.length}-${Date.now()}`, name: '', category: 'other', amount: '', day: '1', preset: false },
+                ])
+              }
+              className="btn btn-ghost !min-h-10 !px-3 !text-[14px]"
+            >
+              <Plus size={15} strokeWidth={2.2} /> Add another
+            </button>
+            {debitsTotal > 0 && (
+              <p className="text-[13px] text-muted-foreground">
+                <span className="tnum font-semibold text-foreground">{formatCurrencyExact(debitsTotal, currencyCode)}</span> a month in
+                debit orders, saved as fixed expenses with their due day.
+              </p>
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
           <div className="space-y-4">
             <div>
               <span className="field-label">Quick picks</span>
@@ -224,10 +372,18 @@ export function OnboardingPage() {
                 </span>
               </div>
             )}
+            {bufferValid && netMonthly > 0 && (
+              <div className="flex items-center justify-between gap-4 rounded-2xl bg-fill px-4 py-3.5" data-testid="onboarding-safe">
+                <span className="text-[14px] font-medium">Safe to spend from day one</span>
+                <span className={`tnum shrink-0 text-[20px] font-bold tracking-[-0.02em] ${safeFromDayOne < 0 ? 'text-alert' : ''}`}>
+                  {formatCurrencyExact(safeFromDayOne, currencyCode)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
-        {step === 3 && !bufferValid && (
+        {step === 4 && !bufferValid && (
           <p role="alert" className="mt-3 text-[13px] font-medium text-alert">
             Choose a buffer between 0% and 50%.
           </p>
@@ -242,6 +398,11 @@ export function OnboardingPage() {
           {step > 1 && (
             <button type="button" onClick={goBack} className="btn btn-secondary !min-h-12 flex-1 !text-[16px]">
               Back
+            </button>
+          )}
+          {step === 3 && filledDebits.length === 0 && (
+            <button type="button" onClick={goNext} className="btn btn-ghost !min-h-12 flex-1 !text-[16px]">
+              Skip
             </button>
           )}
           {step < TOTAL_STEPS ? (

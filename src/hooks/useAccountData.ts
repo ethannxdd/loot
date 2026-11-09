@@ -3,8 +3,11 @@ import { describeFunctionError, isFunctionMissing } from '@/lib/function-error'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './useAuth'
 
-/** Every table that holds this user's own rows, keyed by the column that identifies the owner. */
-const USER_TABLES: { table: string; ownerColumn: string }[] = [
+/**
+ * Every table that holds this user's own rows, keyed by the column that identifies the owner. `optional` tables
+ * belong to Phase 6 migrations that may not have been run yet — a missing table is skipped, never an error.
+ */
+const USER_TABLES: { table: string; ownerColumn: string; optional?: boolean; columns?: string }[] = [
   { table: 'profiles', ownerColumn: 'id' },
   { table: 'expenses', ownerColumn: 'user_id' },
   { table: 'income_streams', ownerColumn: 'user_id' },
@@ -27,7 +30,34 @@ const USER_TABLES: { table: string; ownerColumn: string }[] = [
   { table: 'score_calibration', ownerColumn: 'user_id' },
   { table: 'assistant_conversations', ownerColumn: 'user_id' },
   { table: 'assistant_messages', ownerColumn: 'user_id' },
+  // Phase 6 — Migration 026
+  { table: 'spend_entries', ownerColumn: 'user_id', optional: true },
+  { table: 'spend_merchant_rules', ownerColumn: 'user_id', optional: true },
+  // Migration 027 — devices only: platform and dates, never endpoints or keys.
+  { table: 'push_subscriptions', ownerColumn: 'user_id', optional: true, columns: 'platform, created_at, last_success_at' },
+  // Migration 028
+  { table: 'stokvels', ownerColumn: 'user_id', optional: true },
+  { table: 'stokvel_members', ownerColumn: 'user_id', optional: true },
+  { table: 'stokvel_payments', ownerColumn: 'user_id', optional: true },
+  { table: 'once_off_income', ownerColumn: 'user_id', optional: true },
+  { table: 'splits', ownerColumn: 'user_id', optional: true },
+  { table: 'split_shares', ownerColumn: 'user_id', optional: true },
+  // Migration 029
+  { table: 'wishlist_items', ownerColumn: 'user_id', optional: true },
+  { table: 'saved_scenarios', ownerColumn: 'user_id', optional: true },
+  // Migration 030
+  { table: 'renewals', ownerColumn: 'user_id', optional: true },
+  { table: 'challenges', ownerColumn: 'user_id', optional: true },
+  { table: 'challenge_checkins', ownerColumn: 'user_id', optional: true },
+  // Migration 031
+  { table: 'tfsa_contributions', ownerColumn: 'user_id', optional: true },
+  { table: 'retirement_profile', ownerColumn: 'user_id', optional: true },
 ]
+
+/** PostgREST / Postgres "relation does not exist" — the migration that creates the table hasn't run. */
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  return error.code === 'PGRST205' || error.code === '42P01' || /does not exist|schema cache/i.test(error.message ?? '')
+}
 
 /** Tables wiped by "Reset all data" — everything except the profile row itself, which is reset separately. */
 const RESET_TABLES = USER_TABLES.filter((t) => t.table !== 'profiles')
@@ -42,13 +72,17 @@ export function useExportData() {
         exported_at: new Date().toISOString(),
         account: { id: user.id, email: user.email },
       }
-      for (const { table, ownerColumn } of USER_TABLES) {
+      for (const { table, ownerColumn, optional, columns } of USER_TABLES) {
         // Filtering on the owner matters: household RLS also lets you READ a partner's profile,
         // expenses and snapshots, and those must never end up in your export.
-        const { data, error } = await supabase.from(table).select('*').eq(ownerColumn, user.id)
+        const { data, error } = await supabase.from(table).select(columns ?? '*').eq(ownerColumn, user.id)
+        if (error && optional && isMissingTable(error)) continue
         if (error) throw new Error(`Couldn't export ${table}: ${error.message}`)
         result[table] = data
       }
+      // Apple Pay capture (Migration 027): whether a key is active and when it was used — never the key.
+      const capture = await supabase.rpc('my_capture_key_status')
+      if (!capture.error) result.capture_key = capture.data
       const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -74,10 +108,13 @@ export function useResetAllData() {
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not signed in')
-      for (const { table, ownerColumn } of RESET_TABLES) {
+      for (const { table, ownerColumn, optional } of RESET_TABLES) {
         const { error } = await supabase.from(table).delete().eq(ownerColumn, user.id)
+        if (error && optional && isMissingTable(error)) continue
         if (error) throw new Error(`Couldn't clear ${table}: ${error.message}`)
       }
+      // Apple Pay capture key (Migration 027) — ignored when the migration hasn't run.
+      await supabase.rpc('revoke_capture_key').then(() => undefined, () => undefined)
       const { error } = await supabase
         .from('profiles')
         .update({

@@ -1,5 +1,6 @@
 import { Pencil, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import { categoryColor, categoryIcon, categoryLabel } from '@/lib/categories'
+import { increaseChip } from '@/lib/stay-ahead'
 import { formatCurrencyExact } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
@@ -66,6 +67,7 @@ export function ExpenseRow({
         <p className="truncate text-[12.5px] text-muted-foreground">
           {categoryLabel(expense.category)}
           {expense.due_day ? ` · due ${expense.due_day}${ordinalSuffix(expense.due_day)}` : ''}
+          {increaseChip(expense) ? ` · ${increaseChip(expense)}` : ''}
           {ownerLabel ? ` · ${ownerLabel}` : ''}
         </p>
       </div>

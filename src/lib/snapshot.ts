@@ -8,8 +8,7 @@ import type { Expense, Profile } from './types'
  * monthly_snapshots row from live profile + expenses data whenever either
  * changes. Never touches a locked (monthly-close) snapshot.
  */
-export async function upsertCurrentMonthSnapshot(profile: Profile, expenses: Expense[]) {
-  const month = currentMonthKey()
+export async function upsertCurrentMonthSnapshot(profile: Profile, expenses: Expense[], month = currentMonthKey()) {
 
   const { data: existing, error: existingError } = await supabase
     .from('monthly_snapshots')

@@ -34,3 +34,9 @@ src/routeTree.gen.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Real (redacted) bank statements for parser work — never committed (Phase 6 B8)
+test-fixtures/statements/
+
+# Phase 6 generated secrets (never commit)
+.secrets/

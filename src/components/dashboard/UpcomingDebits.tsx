@@ -1,5 +1,6 @@
 import { daysUntilNextDue, nextDueDate } from '@/lib/money'
 import { categoryLabel } from '@/lib/categories'
+import type { Cycle } from '@/lib/cycle'
 import { formatCurrency, formatCurrencyExact } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
@@ -11,13 +12,18 @@ function whenLabel(days: number, date: Date) {
   return date.toLocaleDateString('en-ZA', { weekday: 'long' })
 }
 
-/** Calendar-tile list of monthly debits due in the next 7 days. */
-export function UpcomingDebits({ expenses, limit }: { expenses: Expense[]; limit?: number }) {
+/**
+ * Calendar-tile list of monthly debits due in the next 7 days. With payday cycles on (`cycle` passed) it becomes
+ * "Before payday": everything still to go off between today and the end of the cycle.
+ */
+export function UpcomingDebits({ expenses, limit, cycle }: { expenses: Expense[]; limit?: number; cycle?: Cycle }) {
+  const beforePayday = Boolean(cycle && !cycle.calendar)
+  const windowEnd = beforePayday ? cycle!.end.getTime() : Infinity
   const upcoming = expenses
     // A "due day" only means something for bills that recur monthly.
     .filter((e) => !e.deleted_at && e.due_day && e.frequency === 'monthly')
     .map((e) => ({ expense: e, days: daysUntilNextDue(e.due_day!), date: nextDueDate(e.due_day!) }))
-    .filter((x) => x.days <= WINDOW_DAYS)
+    .filter((x) => (beforePayday ? x.date.getTime() <= windowEnd : x.days <= WINDOW_DAYS))
     .sort((a, b) => a.days - b.days)
   const shown = limit ? upcoming.slice(0, limit) : upcoming
   const total = upcoming.reduce((s, x) => s + x.expense.amount, 0)
@@ -25,12 +31,21 @@ export function UpcomingDebits({ expenses, limit }: { expenses: Expense[]; limit
   return (
     <section className="card flex h-full flex-col">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="card-title">Coming up</h3>
-        <span className="text-[13px] text-muted-foreground">Next {WINDOW_DAYS} days</span>
+        <h3 className="card-title">{beforePayday ? 'Before payday' : 'Coming up'}</h3>
+        <span className="text-[13px] text-muted-foreground">
+          {beforePayday ? `Until ${cycle!.end.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}` : `Next ${WINDOW_DAYS} days`}
+        </span>
       </div>
+      {beforePayday && upcoming.length > 0 && (
+        <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">
+          <b className="tnum font-semibold text-foreground">{formatCurrency(total)}</b> still to go off before payday
+        </p>
+      )}
       {upcoming.length === 0 ? (
         <p className="py-6 text-center text-[13px] text-muted-foreground">
-          Nothing due in the next {WINDOW_DAYS} days. Add a due day to a monthly expense to see it here.
+          {beforePayday
+            ? 'No more debit orders before payday. Add a due day to a monthly expense to see it here.'
+            : `Nothing due in the next ${WINDOW_DAYS} days. Add a due day to a monthly expense to see it here.`}
         </p>
       ) : (
         <>
@@ -55,7 +70,7 @@ export function UpcomingDebits({ expenses, limit }: { expenses: Expense[]; limit
           </ul>
           <div className="mt-auto pt-3">
             <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-muted-foreground">
-              {upcoming.length} debit{upcoming.length === 1 ? '' : 's'} this week
+              {upcoming.length} debit{upcoming.length === 1 ? '' : 's'} {beforePayday ? 'before payday' : 'this week'}
               <b className="tnum text-[15px] text-foreground">{formatCurrency(total)}</b>
             </div>
           </div>

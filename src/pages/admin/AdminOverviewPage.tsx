@@ -23,6 +23,7 @@ import { AdminCard, IconTile } from '@/components/admin/AdminUi'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Segmented } from '@/components/ui/Segmented'
 import { StatStrip } from '@/components/ui/StatStrip'
+import { OverviewPhase6Card } from '@/components/admin/Phase6Cards'
 import { useAdminOverview } from '@/hooks/useAdmin'
 import { formatDate, type OverviewStats, type Platform } from '@/lib/admin'
 import { chartAxisTick, chartTooltipStyle } from '@/lib/chart'
@@ -357,6 +358,9 @@ export function AdminOverviewPage() {
             <AdminCard title="Benchmarks readiness" sub="Samples per income bracket · Stats → Benchmarks switches on at 50" className="lg:col-span-5">
               <Benchmarks b={s.benchmarks} />
             </AdminCard>
+            <div className="lg:col-span-7">
+              <OverviewPhase6Card s={s} />
+            </div>
           </div>
         </>
       )}

@@ -1,18 +1,15 @@
 import { Lightbulb } from 'lucide-react'
 import { useState } from 'react'
+import { useMonthLabels } from '@/hooks/useCycle'
 import { useLatestBriefing } from '@/hooks/useMonthlyBriefing'
 import type { MonthlySnapshot } from '@/lib/types'
-
-function monthLong(key: string) {
-  const [y, m] = key.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('en-ZA', { month: 'long' })
-}
 
 /** Last closed month's briefing: the headline observation, the recommendation, and the rest on demand. */
 export function BriefingCard({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   const lockedSnapshots = snapshots.filter((s) => s.locked_at)
   const { latest, isLoading } = useLatestBriefing(lockedSnapshots)
   const [expanded, setExpanded] = useState(false)
+  const labels = useMonthLabels()
 
   if (isLoading) return <div className="skeleton h-44 rounded-[22px]" />
 
@@ -34,7 +31,7 @@ export function BriefingCard({ snapshots }: { snapshots: MonthlySnapshot[] }) {
   return (
     <section className="card-purple flex-1 p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="card-title">{monthLong(latest.month)} in review</h3>
+        <h3 className="card-title">{labels.name(latest.month)} in review</h3>
         <span className="text-[13px] text-muted-foreground">Briefing</span>
       </div>
       <p className="text-[15px] leading-relaxed tracking-[-0.008em]">{headline}</p>

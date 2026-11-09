@@ -10,6 +10,9 @@ import { InstallSection } from '@/components/settings/InstallSection'
 import { IncomeSection } from '@/components/settings/IncomeSection'
 import { PreferencesSection } from '@/components/settings/PreferencesSection'
 import { ProfileSection } from '@/components/settings/ProfileSection'
+import { CaptureSection } from '@/components/settings/CaptureSection'
+import { SupportSection } from '@/components/settings/SupportSection'
+import { useFeature } from '@/hooks/useFeatures'
 import { useProfile } from '@/hooks/useProfile'
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
@@ -23,6 +26,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
 
 export function SettingsPage() {
   const { data: profile, isLoading } = useProfile()
+  const capture = useFeature('apple_pay_capture')
 
   return (
     <div className="animate-enter mx-auto max-w-3xl space-y-8">
@@ -44,6 +48,11 @@ export function SettingsPage() {
             <IncomeSection profile={profile} />
             <PreferencesSection profile={profile} />
           </Group>
+          {capture && (
+            <Group label="Spending">
+              <CaptureSection />
+            </Group>
+          )}
         </>
       )}
 
@@ -57,6 +66,7 @@ export function SettingsPage() {
       </Group>
 
       <Group label="Support">
+        <SupportSection />
         <HelpSection />
         <DataSection />
       </Group>

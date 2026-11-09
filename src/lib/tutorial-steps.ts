@@ -9,6 +9,13 @@ export interface TutorialStep {
   selectors: string[]
   title: string
   body: string
+  /** Only part of the tour when this feature flag is on. */
+  flag?: string
+}
+
+/** The steps for this person's feature flags. */
+export function tutorialStepsFor(flags: Record<string, boolean | undefined> | undefined): TutorialStep[] {
+  return TUTORIAL_STEPS.filter((s) => !s.flag || flags?.[s.flag] === true)
 }
 
 /**
@@ -40,6 +47,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     body: 'Thinking about buying something? Type it here for a straight answer without leaving your Summary.',
   },
   {
+    id: 'spending',
+    route: '/spending',
+    selectors: ['[data-tutorial="spending-log"]', '[data-tutorial="page-header"]'],
+    title: 'Spending',
+    body: 'Tap “Log a spend” whenever you pay for something. Safe to spend on your Summary and your budgets update straight away.',
+    flag: 'live_cycle',
+  },
+  {
     id: 'expenses',
     route: '/expenses',
     selectors: ['[data-tutorial="expenses-add"]', '[data-tutorial="page-header"]'],
@@ -52,6 +67,22 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     selectors: ['[data-tutorial="goals-add"]', '[data-tutorial="page-header"]'],
     title: 'Goals',
     body: 'Tap “Add goal” to save towards something (an emergency fund is a great first one). Loot tells you what to put away each month to hit it.',
+  },
+  {
+    id: 'wishlist',
+    route: '/wishlist',
+    selectors: ['[data-tutorial="wishlist-add"]', '[data-tutorial="page-header"]'],
+    title: 'Wishlist',
+    body: 'Want something? Add it here instead of buying it straight away. When the cooling-off ends, Loot checks it against your numbers that day.',
+    flag: 'wishlist',
+  },
+  {
+    id: 'stokvels',
+    route: '/stokvels',
+    selectors: ['[data-tutorial="stokvels-add"]', '[data-tutorial="page-header"]'],
+    title: 'Stokvels',
+    body: 'Add your stokvel to track contributions and see when your payout lands. Members are names only.',
+    flag: 'stokvels',
   },
   {
     id: 'checker',
@@ -89,11 +120,27 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     body: 'Tap two to four saved plans to put them side by side. Green marks the better number in each row.',
   },
   {
+    id: 'tools',
+    route: '/tools',
+    selectors: ['[data-tutorial="tools-grid"]', '[data-tutorial="page-header"]'],
+    title: 'Tools',
+    body: 'Calculators for the big decisions: the true cost of a car, rent vs buy, moving out, your runway, and the seasonal planners.',
+    flag: 'tools',
+  },
+  {
     id: 'tax',
     route: '/tax',
     selectors: ['[data-tutorial="tax-summary"]', '[data-tutorial="page-header"]'],
     title: 'Tax centre',
     body: 'Your tax for the year, per month and your likely refund, from SARS tables. Add deductions below to see what they save you.',
+  },
+  {
+    id: 'assistant',
+    route: '/dashboard',
+    selectors: ['[data-tutorial="assistant-fab"]'],
+    title: 'Ask Loot',
+    body: 'Tap here to ask about a purchase, your cycle or your tax. Every figure in the answer is worked out from your own numbers.',
+    flag: 'assistant',
   },
   {
     id: 'score',

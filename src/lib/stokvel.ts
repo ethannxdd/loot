@@ -1,0 +1,255 @@
+/**
+ * Stokvels (Phase 6 §4.1, D8) — private tracking of a savings club. Members are names only. Pure maths: contribution
+ * schedule, payout month and amount, paid in so far and months to go.
+ */
+
+export const STOKVEL_TYPES = ['rotating', 'savings', 'grocery', 'burial', 'investment'] as const
+export type StokvelType = (typeof STOKVEL_TYPES)[number]
+
+export const STOKVEL_TYPE_LABELS: Record<StokvelType, string> = {
+  rotating: 'Rotating',
+  savings: 'Savings',
+  grocery: 'Grocery',
+  burial: 'Burial',
+  investment: 'Investment',
+}
+
+export type StokvelFrequency = 'monthly' | 'weekly' | 'fortnightly'
+
+/** Mirrors public.stokvels — Migration 028. */
+export interface Stokvel {
+  id: string
+  user_id: string
+  name: string
+  type: StokvelType
+  contribution_amount: number
+  frequency: StokvelFrequency
+  contribution_day: number | null
+  /** 'YYYY-MM-01' */
+  start_month: string
+  member_count: number
+  my_position: number | null
+  /** 'YYYY-MM-DD' */
+  payout_date: string | null
+  expected_interest_pct: number | null
+  expense_id: string | null
+  ended_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StokvelMember {
+  id: string
+  stokvel_id: string
+  user_id: string
+  name: string
+  position: number | null
+  is_me: boolean
+  paid_out_on: string | null
+}
+
+export interface StokvelPayment {
+  id: string
+  stokvel_id: string
+  user_id: string
+  /** 'YYYY-MM-01' */
+  month: string
+  kind: 'contribution' | 'payout'
+  amount: number
+  paid_on: string
+  created_at: string
+}
+
+/** Mirrors public.once_off_income — Migration 028. */
+export interface OnceOffIncome {
+  id: string
+  user_id: string
+  label: string
+  amount: number
+  /** 'YYYY-MM-DD' */
+  expected_on: string
+  kind: 'stokvel' | 'bonus' | 'refund' | 'other'
+  source_id: string | null
+  received_on: string | null
+  handled_as: 'cycle' | 'goal' | null
+  goal_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** The expense category the linked monthly commitment uses (editable afterwards). */
+export const STOKVEL_EXPENSE_CATEGORY: Record<StokvelType, string> = {
+  rotating: 'savings',
+  savings: 'savings',
+  investment: 'savings',
+  grocery: 'groceries',
+  burial: 'insurance',
+}
+
+/** Contribution per month, whatever the frequency (weekly ×52÷12, fortnightly ×26÷12). */
+export function monthlyContribution(s: Pick<Stokvel, 'contribution_amount' | 'frequency'>): number {
+  const a = Number(s.contribution_amount)
+  if (s.frequency === 'weekly') return (a * 52) / 12
+  if (s.frequency === 'fortnightly') return (a * 26) / 12
+  return a
+}
+
+function monthKey(year: number, month: number): string {
+  const d = new Date(year, month, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+function parseMonth(key: string): [number, number] {
+  const [y, m] = key.split('-').map(Number)
+  return [y, m - 1]
+}
+
+/** Whole months from `a` to `b` (both 'YYYY-MM-01'), b − a. */
+export function monthsBetween(a: string, b: string): number {
+  const [ay, am] = parseMonth(a)
+  const [by, bm] = parseMonth(b)
+  return (by - ay) * 12 + (bm - am)
+}
+
+export function addMonths(key: string, n: number): string {
+  const [y, m] = parseMonth(key)
+  return monthKey(y, m + n)
+}
+
+export function currentMonth(today = new Date()): string {
+  return monthKey(today.getFullYear(), today.getMonth())
+}
+
+export interface Payout {
+  /** 'YYYY-MM-01' of the payout month (rotating) or of payout_date. */
+  month: string
+  /** Exact date when known ('YYYY-MM-DD'). */
+  date: string | null
+  amount: number
+  /** True when the amount includes an interest estimate ("~R 14 500"). */
+  estimate: boolean
+}
+
+/**
+ * The person's payout:
+ * - rotating: month = start + (position − 1); amount = monthly contribution × members.
+ * - savings / grocery / investment: on payout_date; amount = their contributions up to then, plus simple interest on
+ *   the average balance if an interest rate is given.
+ * - burial: none (it pays out on a death, not on a date).
+ */
+export function payoutFor(s: Stokvel): Payout | null {
+  const monthly = monthlyContribution(s)
+  if (s.type === 'burial') return null
+  if (s.type === 'rotating') {
+    if (!s.my_position) return null
+    return {
+      month: addMonths(s.start_month, s.my_position - 1),
+      date: null,
+      amount: Math.round(monthly * s.member_count * 100) / 100,
+      estimate: false,
+    }
+  }
+  if (!s.payout_date) return null
+  const payoutMonth = `${s.payout_date.slice(0, 7)}-01`
+  const months = Math.max(0, monthsBetween(s.start_month, payoutMonth))
+  const paidIn = monthly * months
+  const rate = Number(s.expected_interest_pct ?? 0) / 100
+  // Contributions arrive evenly, so on average each rand is in for half the period.
+  const interest = paidIn * rate * (months / 12 / 2)
+  return { month: payoutMonth, date: s.payout_date, amount: Math.round((paidIn + interest) * 100) / 100, estimate: rate > 0 }
+}
+
+/** Contribution months from the start month up to and including `until` (or the payout month for savings types). */
+export function contributionMonths(s: Stokvel, until: string): string[] {
+  const out: string[] = []
+  const n = monthsBetween(s.start_month, until)
+  for (let i = 0; i <= n; i++) out.push(addMonths(s.start_month, i))
+  return out
+}
+
+/** Total paid in so far from the contributions the person ticked off. */
+export function paidInSoFar(payments: StokvelPayment[]): number {
+  return payments.filter((p) => p.kind === 'contribution').reduce((sum, p) => sum + Number(p.amount), 0)
+}
+
+/** Months until the payout month (0 = this month, negative = already past). Null when there's no payout. */
+export function monthsToGo(s: Stokvel, today = new Date()): number | null {
+  const p = payoutFor(s)
+  if (!p) return null
+  return monthsBetween(currentMonth(today), p.month)
+}
+
+/** The next contribution date on or after `today` (monthly cadence on contribution_day, clamped to month length). */
+export function nextContributionDate(s: Stokvel, today = new Date()): Date | null {
+  if (!s.contribution_day || s.ended_at) return null
+  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const [sy, sm] = parseMonth(s.start_month)
+  for (let i = 0; i < 14; i++) {
+    const y = t.getFullYear()
+    const m = t.getMonth() + i
+    const len = new Date(y, m + 1, 0).getDate()
+    const d = new Date(y, m, Math.min(s.contribution_day, len))
+    if (d.getTime() < new Date(sy, sm, 1).getTime()) continue
+    if (d.getTime() >= t.getTime()) return d
+  }
+  return null
+}
+
+/** Late = a past contribution month (before this one) that hasn't been ticked off. */
+export function lateMonths(s: Stokvel, payments: StokvelPayment[], today = new Date()): string[] {
+  const paid = new Set(payments.filter((p) => p.kind === 'contribution').map((p) => p.month))
+  const last = addMonths(currentMonth(today), -1)
+  if (monthsBetween(s.start_month, last) < 0) return []
+  const end = (() => {
+    const p = payoutFor(s)
+    return p && s.type !== 'rotating' && monthsBetween(p.month, last) > 0 ? p.month : last
+  })()
+  return contributionMonths(s, end).filter((m) => !paid.has(m))
+}
+
+/** "Mar 2027" for a month key. */
+export function monthName(key: string): string {
+  const [y, m] = parseMonth(key)
+  return new Date(y, m, 1).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' })
+}
+
+export interface StokvelNotice {
+  kind: 'stokvel'
+  title: string
+  body: string
+  link: string
+  dedupe_key: string
+}
+
+/**
+ * Server-side reminders (notify-daily): contribution due in 3 days, and the start of the person's payout month.
+ * `fmt` formats money in the person's currency.
+ */
+export function stokvelNotices(s: Stokvel, today: Date, fmt: (n: number) => string): StokvelNotice[] {
+  if (s.ended_at) return []
+  const out: StokvelNotice[] = []
+  const next = nextContributionDate(s, today)
+  if (next) {
+    const days = Math.round((next.getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000)
+    if (days === 3) {
+      out.push({
+        kind: 'stokvel',
+        title: `${s.name} contribution due`,
+        body: `${fmt(Number(s.contribution_amount))} is due in 3 days.`,
+        link: `/stokvels/${s.id}`,
+        dedupe_key: `stokvel_due:${s.id}:${currentMonth(next)}:${next.getDate()}`,
+      })
+    }
+  }
+  const p = payoutFor(s)
+  if (p && p.month === currentMonth(today)) {
+    out.push({
+      kind: 'stokvel',
+      title: 'Stokvel payout this month',
+      body: `Your ${s.name} payout (${p.estimate ? '~' : ''}${fmt(p.amount)}) is this month.`,
+      link: `/stokvels/${s.id}`,
+      dedupe_key: `stokvel_payout:${s.id}:${p.month}`,
+    })
+  }
+  return out
+}

@@ -1,3 +1,4 @@
+import { useFeature } from '@/hooks/useFeatures'
 import { Link } from '@tanstack/react-router'
 import { Compass, RotateCcw } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
@@ -24,6 +25,7 @@ export function NotFoundPage() {
 /** Shown when a route throws while loading or rendering. */
 export function ErrorPage({ error, reset }: { error: unknown; reset?: () => void }) {
   const message = error instanceof Error ? error.message : 'An unexpected error occurred.'
+  const feedback = useFeature('feedback')
   return (
     <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-4 p-6 text-center">
       <Logo size={56} />
@@ -42,6 +44,15 @@ export function ErrorPage({ error, reset }: { error: unknown; reset?: () => void
           Go to Summary
         </Link>
       </div>
+      {/* Phase 6 B7: sends people to Settings → Support with the problem filled in. */}
+      {feedback && (
+      <a
+        href={`/settings?support=new&error=${encodeURIComponent(`${message} (on ${window.location.pathname})`.slice(0, 300))}`}
+        className="text-[14px] font-semibold text-primary"
+      >
+        Report this
+      </a>
+      )}
     </div>
   )
 }

@@ -1,0 +1,193 @@
+import { categoryLabel } from './category-data'
+import { cycleFor, type Cycle, type PaydaySettings } from './cycle'
+import { formatCurrency } from './format'
+import { disposableIncome, nextDueDate, safetyBufferAmount } from './money'
+import { addDays, dateKey, startOfDay } from './sa-calendar'
+import { budgetsFor, paceFor, safeToSpend, type SpendEntry } from './spending'
+import type { Expense } from './types'
+
+/**
+ * Push-worthy notifications computed on the server (notify-daily) — §3.4. Pure, shared with the edge functions via
+ * scripts/sync-shared.mjs. Each candidate has a dedupe_key, so running the job twice never doubles anything up.
+ */
+
+export const PUSH_KINDS = [
+  'payday',
+  'debit_orders',
+  'pace',
+  'budget_low',
+  'wishlist_ready',
+  'renewal',
+  'price_change',
+  'stokvel',
+  'split',
+  'challenge',
+  'announcement',
+  'feedback_reply',
+] as const
+export type PushKind = (typeof PUSH_KINDS)[number]
+
+export const PUSH_KIND_LABELS: Record<PushKind, { label: string; hint: string }> = {
+  payday: { label: 'Payday', hint: 'Your new Safe to spend on payday morning' },
+  debit_orders: { label: 'Debit orders tomorrow', hint: 'The day before money goes off' },
+  pace: { label: 'Weekly pace', hint: 'Sunday evening: ahead of or behind your budgets' },
+  budget_low: { label: 'Budgets running low', hint: 'At 80% and 100% of a budget' },
+  wishlist_ready: { label: 'Wishlist ready', hint: 'When a cooling-off period ends' },
+  renewal: { label: 'Renewals', hint: '30 and 7 days before something renews' },
+  price_change: { label: 'Price increases', hint: 'A week before a price change that affects you' },
+  stokvel: { label: 'Stokvel turns', hint: 'Contributions due and your payout month' },
+  split: { label: 'Splits reminders', hint: 'When someone still owes you' },
+  challenge: { label: 'Challenges', hint: 'On challenge days' },
+  announcement: { label: 'News from Loot', hint: 'Occasional updates from the Loot team' },
+  feedback_reply: { label: 'Support replies', hint: 'When Loot support answers your message' },
+}
+
+/** Rule 23: a missing key means on. */
+export function kindEnabled(prefs: Record<string, unknown> | null | undefined, kind: string): boolean {
+  return prefs?.[kind] !== false
+}
+
+export interface Candidate {
+  kind: PushKind
+  title: string
+  body: string
+  link: string | null
+  dedupe_key: string
+}
+
+export interface UserSnapshot {
+  net_income: number
+  safety_buffer_pct: number
+  currency_code: string
+  payday: PaydaySettings | null
+  expenses: Expense[]
+  entries: SpendEntry[]
+}
+
+function safeFor(u: UserSnapshot, cycle: Cycle) {
+  const disposable = disposableIncome(u.net_income, u.expenses)
+  const buffer = safetyBufferAmount(u.net_income, u.safety_buffer_pct)
+  const budgets = budgetsFor(u.expenses)
+  return { ...safeToSpend({ disposable, buffer, budgets, entries: u.entries, cycle }), budgets }
+}
+
+/** Morning of the adjusted payday (payday cycles only). */
+export function paydayNotification(u: UserSnapshot, today: Date): Candidate[] {
+  if (!u.payday) return []
+  const cycle = cycleFor(today, u.payday, today)
+  if (cycle.calendar || dateKey(cycle.start) !== dateKey(today)) return []
+  const s = safeFor(u, cycle)
+  return [
+    {
+      kind: 'payday',
+      title: 'Payday',
+      body: `Your new loot: ${formatCurrency(Math.max(0, s.safe), u.currency_code)} safe to spend this cycle.`,
+      link: '/dashboard',
+      dedupe_key: `payday:${cycle.key}`,
+    },
+  ]
+}
+
+/** The day before one or more monthly debit orders with a due day. */
+export function debitOrdersNotification(u: UserSnapshot, today: Date): Candidate[] {
+  const tomorrow = addDays(startOfDay(today), 1)
+  const due = u.expenses.filter(
+    (e) => !e.deleted_at && e.due_day && e.frequency === 'monthly' && dateKey(nextDueDate(e.due_day, tomorrow)) === dateKey(tomorrow),
+  )
+  if (due.length === 0) return []
+  const total = due.reduce((s, e) => s + e.amount, 0)
+  return [
+    {
+      kind: 'debit_orders',
+      title: 'Debit orders tomorrow',
+      body: `${formatCurrency(total, u.currency_code)} in debit orders go${due.length === 1 ? 'es' : ''} off tomorrow.`,
+      link: '/dashboard',
+      dedupe_key: `debit_orders:${dateKey(tomorrow)}`,
+    },
+  ]
+}
+
+/** Sunday evening pace across variable budgets — only for people who logged something this cycle. */
+export function paceNotification(u: UserSnapshot, today: Date): Candidate[] {
+  const cycle = cycleFor(today, u.payday, today)
+  const s = safeFor(u, cycle)
+  if (s.entryCount === 0 || s.budgets.length === 0) return []
+  let expected = 0
+  let spent = 0
+  for (const b of s.budgets) {
+    const p = paceFor(b.budget, Math.max(0, s.spentByCategory[b.category] ?? 0), cycle, today)
+    expected += p.expected
+    spent += p.spent
+  }
+  const diff = expected - spent
+  if (Math.abs(diff) < 50) return []
+  return [
+    {
+      kind: 'pace',
+      title: diff > 0 ? 'Ahead of pace' : 'Behind pace',
+      body:
+        diff > 0
+          ? `You're ${formatCurrency(diff, u.currency_code)} ahead of pace on your budgets this week.`
+          : `You're ${formatCurrency(-diff, u.currency_code)} behind pace on your budgets. Ease off until payday.`,
+      link: '/spending',
+      dedupe_key: `pace:${dateKey(today)}`,
+    },
+  ]
+}
+
+/** A variable budget reaching 80% / 100% in the cycle. */
+export function budgetLowNotifications(u: UserSnapshot, today: Date): Candidate[] {
+  const cycle = cycleFor(today, u.payday, today)
+  const s = safeFor(u, cycle)
+  const out: Candidate[] = []
+  for (const b of s.budgets) {
+    if (b.budget <= 0) continue
+    const spent = Math.max(0, s.spentByCategory[b.category] ?? 0)
+    const pct = spent / b.budget
+    if (pct < 0.8) continue
+    const mark = pct >= 1 ? 100 : 80
+    const label = categoryLabel(b.category)
+    out.push({
+      kind: 'budget_low',
+      title: mark === 100 ? `${label} budget used up` : `${label} is running low`,
+      body:
+        mark === 100
+          ? `You've used your ${formatCurrency(b.budget, u.currency_code)} ${label.toLowerCase()} budget with ${cycle.daysLeft} day${cycle.daysLeft === 1 ? '' : 's'} to go.`
+          : `${label}: ${formatCurrency(b.budget - spent, u.currency_code)} left for ${cycle.daysLeft} day${cycle.daysLeft === 1 ? '' : 's'}.`,
+      link: '/spending',
+      dedupe_key: `budget_low:${b.category}:${cycle.key}:${mark}`,
+    })
+  }
+  return out
+}
+
+/** Everything notify-daily produces for one person. `weekly` = the Sunday 18:00 run (pace only). */
+export function scheduledCandidates(u: UserSnapshot, today: Date, run: 'daily' | 'weekly'): Candidate[] {
+  if (run === 'weekly') return paceNotification(u, today)
+  return [...paydayNotification(u, today), ...debitOrdersNotification(u, today), ...budgetLowNotifications(u, today)]
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Rule 23 — quiet hours and the daily cap (used by push-dispatch)
+// ---------------------------------------------------------------------------------------------------------
+
+/** Hour of the day in South Africa (UTC+2, no daylight saving). */
+export function sastHour(at: Date): number {
+  return (at.getUTCHours() + 2) % 24
+}
+
+/** 21:00–07:00 SAST: nothing is pushed; it waits for 07:00. */
+export function inQuietHours(at: Date): boolean {
+  const h = sastHour(at)
+  return h >= 21 || h < 7
+}
+
+/** The SAST calendar day of a timestamp, 'YYYY-MM-DD'. */
+export function sastDay(at: Date): string {
+  const shifted = new Date(at.getTime() + 2 * 3_600_000)
+  return shifted.toISOString().slice(0, 10)
+}
+
+export const DAILY_PUSH_CAP = 3
+/** Replies to the user's own feedback don't count towards the cap. */
+export const CAP_EXEMPT: ReadonlySet<string> = new Set(['feedback_reply'])

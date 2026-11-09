@@ -1,5 +1,7 @@
 import { getCalendarWithCountdowns } from './tax/calendar'
 import { categoryLabel } from './categories'
+import type { Cycle } from './cycle'
+import { startOfDay } from './sa-calendar'
 import { currentMonthKey, daysUntilNextDue, monthLabel, nextDueDate } from './money'
 import { formatCurrency } from './utils'
 import type {
@@ -83,15 +85,17 @@ function subscriptionNotifications(reviews: SubscriptionReview[]): NewNotificati
 /** Categories tracking well above their historical average this month. */
 function spendingAnomalyNotifications(
   flagged: { category: string; pctAboveAverage: number }[],
-  from = new Date()
+  from = new Date(),
+  cycle?: NotificationCycle,
 ): NewNotificationCandidate[] {
-  const month = currentMonthKey(from)
+  const month = cycle?.key ?? currentMonthKey(from)
+  const period = cycle && !cycle.calendar ? 'this cycle' : 'this month'
   return flagged
     .filter((f) => f.pctAboveAverage >= 25)
     .map((f) => ({
       kind: 'spending_anomaly' as const,
       title: `${categoryLabel(f.category)} spending is up`,
-      body: `Tracking ${Math.round(f.pctAboveAverage)}% above its 3-month average this month.`,
+      body: `Tracking ${Math.round(f.pctAboveAverage)}% above its 3-month average ${period}.`,
       link: '/stats',
       dedupe_key: `spending_anomaly:${f.category}:${month}`,
     }))
@@ -123,15 +127,22 @@ function goalMilestoneNotifications(goals: SavingsGoal[]): NewNotificationCandid
 }
 
 /** First days of the month, this month not yet locked — a nudge to run the monthly close. */
-function monthlyCloseReadyNotification(currentSnapshot: MonthlySnapshot | null, from = new Date()): NewNotificationCandidate[] {
-  if (from.getDate() > 3) return []
-  const month = currentMonthKey(from)
+function monthlyCloseReadyNotification(
+  currentSnapshot: MonthlySnapshot | null,
+  from = new Date(),
+  cycle?: NotificationCycle,
+): NewNotificationCandidate[] {
+  // Payday cycles (Phase 6): the nudge comes in the first three days of the cycle instead of the month.
+  const dayOfPeriod = cycle && !cycle.calendar ? Math.round((startOfDay(from).getTime() - cycle.start.getTime()) / 86_400_000) + 1 : from.getDate()
+  if (dayOfPeriod > 3) return []
+  const month = cycle?.key ?? currentMonthKey(from)
   if (currentSnapshot?.locked_at) return []
+  const name = cycle && !cycle.calendar ? cycle.shortLabel : monthLabel(month)
   return [
     {
       kind: 'monthly_close_ready',
       title: 'Time for your monthly close',
-      body: `Confirm ${monthLabel(month)}'s numbers and lock them in from the Monthly Close card on your Dashboard.`,
+      body: `Confirm ${name}'s numbers and lock them in from the Monthly Close card on your Dashboard.`,
       link: '/dashboard',
       dedupe_key: `monthly_close_ready:${month}`,
     },
@@ -167,6 +178,9 @@ function scoreChangeNotification(latest: BudgeScore | null, previous: BudgeScore
   ]
 }
 
+/** The current Loot cycle (Phase 6) — absent or calendar = the old calendar-month behaviour. */
+export type NotificationCycle = Pick<Cycle, 'key' | 'start' | 'calendar' | 'shortLabel'>
+
 export interface NotificationInputs {
   expenses: Expense[]
   taxProfile: TaxProfile | null
@@ -177,6 +191,7 @@ export interface NotificationInputs {
   latestBriefingMonth: string | null
   latestScore: BudgeScore | null
   previousScore: BudgeScore | null
+  cycle?: NotificationCycle
 }
 
 export function generateNotificationCandidates(inputs: NotificationInputs, from = new Date()): NewNotificationCandidate[] {
@@ -184,9 +199,9 @@ export function generateNotificationCandidates(inputs: NotificationInputs, from 
     ...upcomingDebitNotifications(inputs.expenses, from),
     ...taxDeadlineNotifications(inputs.taxProfile, from),
     ...subscriptionNotifications(inputs.subscriptionReviews),
-    ...spendingAnomalyNotifications(inputs.flaggedCategories, from),
+    ...spendingAnomalyNotifications(inputs.flaggedCategories, from, inputs.cycle),
     ...goalMilestoneNotifications(inputs.goals),
-    ...monthlyCloseReadyNotification(inputs.currentSnapshot, from),
+    ...monthlyCloseReadyNotification(inputs.currentSnapshot, from, inputs.cycle),
     ...briefingReadyNotification(inputs.latestBriefingMonth),
     ...scoreChangeNotification(inputs.latestScore, inputs.previousScore),
   ]

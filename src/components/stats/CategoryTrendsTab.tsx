@@ -4,11 +4,12 @@ import { Select } from '@/components/ui/Select'
 import { StatStrip } from '@/components/ui/StatStrip'
 import { categoryColor, categoryLabel, EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { chartAxisTick, chartTooltipStyle } from '@/lib/chart'
-import { monthLabel } from '@/lib/money'
+import { useMonthLabels } from '@/hooks/useCycle'
 import { formatCurrency } from '@/lib/utils'
 import type { MonthlySnapshot } from '@/lib/types'
 
 export function CategoryTrendsTab({ snapshots }: { snapshots: MonthlySnapshot[] }) {
+  const labels = useMonthLabels()
   const categoriesWithData = useMemo(() => {
     const seen = new Set<string>()
     for (const s of snapshots) {
@@ -31,7 +32,7 @@ export function CategoryTrendsTab({ snapshots }: { snapshots: MonthlySnapshot[] 
   }
 
   const data = snapshots.map((s) => ({
-    month: monthLabel(s.month),
+    month: labels.short(s.month),
     amount: Math.round((category && s.expenses_by_category?.[category]) || 0),
   }))
   const amounts = data.map((x) => x.amount)
