@@ -171,7 +171,7 @@ function Phase6Tiles() {
           <div>
             <h3 className="text-[17px] font-semibold tracking-[-0.01em]">Safe to spend, payday to payday</h3>
             <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
-              Log a spend in two taps (or let Apple Pay do it) and see what’s really left until payday — with a daily amount that keeps you on track.
+              Log a spend in two taps and see what’s really left until payday — with a daily amount that keeps you on track.
             </p>
           </div>
         </div>
