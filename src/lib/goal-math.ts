@@ -229,3 +229,34 @@ export function computeAutoAllocations(goals: SavingsGoal[], pool: number, mode:
 export function currentPeriodKey(date = new Date()): string {
   return currentMonthKey(date)
 }
+
+/** Apps that can own a goal's target. Northbound (the UK-move planner) keeps its linked goal's target in step with its plan. */
+export type GoalManager = 'northbound'
+
+/** The note Northbound writes on goals it creates; recognises goals made before `managed_by` existed. */
+export const NORTHBOUND_GOAL_NOTE_PREFIX = 'Target set by Northbound.'
+
+/**
+ * Which app manages this goal's target and date, or null if the user does. Prefers the `managed_by` column
+ * (Migration 033) and falls back to Northbound's note for goals created before it. Only the target is managed:
+ * savings, contributions, pausing and auto-funding stay the user's.
+ */
+export function managedBy(goal: Pick<SavingsGoal, 'note'> & { managed_by?: string | null }): GoalManager | null {
+  const col = goal.managed_by?.trim().toLowerCase()
+  if (col === 'northbound') return 'northbound'
+  if (!col && goal.note?.trim().startsWith(NORTHBOUND_GOAL_NOTE_PREFIX)) return 'northbound'
+  return null
+}
+
+export function isManagedGoal(goal: Pick<SavingsGoal, 'note'> & { managed_by?: string | null }): boolean {
+  return managedBy(goal) !== null
+}
+
+/** Display name for a goal manager, for "Target set by …". */
+export const GOAL_MANAGER_LABELS: Record<GoalManager, string> = { northbound: 'Northbound' }
+
+/** One line explaining why a managed goal's target and date can't be edited in Loot. */
+export function managedTargetExplainer(manager: GoalManager): string {
+  const name = GOAL_MANAGER_LABELS[manager]
+  return `${name} sets this target and date from your main scenario, so they change when you edit that scenario in ${name}. Deposits, withdrawals, pausing and auto-funding work as normal.`
+}

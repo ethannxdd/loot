@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { completionPatch, currentPeriodKey } from '@/lib/goal-math'
+import { completionPatch, currentPeriodKey, isManagedGoal } from '@/lib/goal-math'
 import { supabase } from '@/lib/supabase'
 import type { GoalContribution, NewGoal, SavingsGoal } from '@/lib/types'
 import { useAuth } from './useAuth'
@@ -114,10 +114,18 @@ export function useUpdateGoal() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<SavingsGoal> }) => {
+    mutationFn: async ({ id, patch: requested }: { id: string; patch: Partial<SavingsGoal> }) => {
+      let patch = requested
       let next: Partial<SavingsGoal> = patch
-      if (patch.target_amount !== undefined || patch.current_amount !== undefined) {
+      const touchesTarget = patch.target_amount !== undefined || patch.target_date !== undefined
+      if (touchesTarget || patch.current_amount !== undefined) {
         const existing = await fetchGoal(id)
+        // Another app (Northbound) owns this goal's target and date; keep Loot from writing over them.
+        if (touchesTarget && isManagedGoal(existing)) {
+          const { target_amount: _amount, target_date: _date, ...rest } = patch
+          patch = rest
+          if (Object.keys(rest).length === 0) return existing
+        }
         next = {
           ...patch,
           ...completionPatch(

@@ -152,6 +152,11 @@ export interface SavingsGoal {
   is_completed: boolean
   completed_at: string | null
   last_auto_period: string | null
+  /**
+   * App that owns target_amount and target_date (Migration 033), e.g. 'northbound'; null = the user sets them.
+   * Optional because rows read before Migration 033 is applied don't have the column. Use `managedBy(goal)`.
+   */
+  managed_by?: string | null
   created_at: string
   updated_at: string
 }

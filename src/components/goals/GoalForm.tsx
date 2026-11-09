@@ -3,6 +3,8 @@ import { useState, type FormEvent } from 'react'
 import { Select } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
 import { GOAL_CATEGORIES, GOAL_CATEGORY_LABELS } from '@/lib/categories'
+import { managedBy, managedTargetExplainer } from '@/lib/goal-math'
+import { ManagedGoalBadge } from './ManagedGoalBadge'
 import type { NewGoal, SavingsGoal } from '@/lib/types'
 
 interface GoalFormProps {
@@ -29,6 +31,10 @@ export function GoalForm({
   const [auto, setAuto] = useState(initial?.progress_mode === 'auto')
   const [weight, setWeight] = useState(String(initial?.weight ?? 1))
   const [error, setError] = useState<string | null>(null)
+  // Northbound-managed goals: target and date are read-only here (useUpdateGoal also drops them from the patch).
+  const manager = initial ? managedBy({ note: initial.note ?? null, managed_by: initial.managed_by }) : null
+  const locked = manager !== null
+  const lockedClass = locked ? 'cursor-not-allowed opacity-70' : ''
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -81,6 +87,15 @@ export function GoalForm({
         />
       </div>
 
+      {manager && (
+        <div className="space-y-1.5 rounded-xl bg-surface-2 p-3.5">
+          <ManagedGoalBadge manager={manager} />
+          <p id="goal-target-locked" className="text-[13px] text-muted-foreground">
+            {managedTargetExplainer(manager)}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="field-label" htmlFor="goal-target">
@@ -96,6 +111,9 @@ export function GoalForm({
             onChange={(e) => setTargetAmount(e.target.value)}
             placeholder="0"
             required
+            readOnly={locked}
+            aria-describedby={locked ? 'goal-target-locked' : undefined}
+            className={lockedClass}
           />
         </div>
         <div>
@@ -117,9 +135,17 @@ export function GoalForm({
 
       <div>
         <label className="field-label" htmlFor="goal-date">
-          Target date (optional)
+          {locked ? 'Target date' : 'Target date (optional)'}
         </label>
-        <input id="goal-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+        <input
+          id="goal-date"
+          type="date"
+          value={targetDate}
+          onChange={(e) => setTargetDate(e.target.value)}
+          readOnly={locked}
+          aria-describedby={locked ? 'goal-target-locked' : undefined}
+          className={lockedClass}
+        />
       </div>
 
       <div>

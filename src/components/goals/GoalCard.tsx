@@ -3,9 +3,10 @@ import { ArrowDown, ArrowUp, Check, GripVertical, Loader2, Pause, Play, Sparkles
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { goalCategoryColor, goalCategoryIcon } from '@/lib/categories'
-import { deadlineLabel, parseDateOnly, requiredMonthlyContribution } from '@/lib/goal-math'
+import { deadlineLabel, managedBy, parseDateOnly, requiredMonthlyContribution } from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
 import type { SavingsGoal } from '@/lib/types'
+import { ManagedGoalBadge } from './ManagedGoalBadge'
 
 interface GoalCardProps {
   goal: SavingsGoal
@@ -46,6 +47,7 @@ export function GoalCard({
   const monthly = requiredMonthlyContribution(goal)
   const overdue = !goal.is_completed && deadlineLabel(goal.target_date) === 'Overdue'
   const isAuto = goal.progress_mode === 'auto'
+  const manager = managedBy(goal)
   const resumeLabel = goal.resume_date
     ? parseDateOnly(goal.resume_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
     : null
@@ -93,6 +95,7 @@ export function GoalCard({
               {isAuto && ' · Auto-funded'}
             </p>
           )}
+          {manager && <ManagedGoalBadge manager={manager} className="mt-1.5" />}
         </div>
         <span className="tnum text-[22px] font-bold tracking-[-0.03em]" style={{ color: goal.is_completed ? 'var(--accent)' : undefined }}>
           {pct}%

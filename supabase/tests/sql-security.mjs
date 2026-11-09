@@ -55,7 +55,12 @@ await db.exec(`
   insert into public.profiles (id) values ('${A}'), ('${B}');
   create table public.expenses (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users on delete cascade,
     category text, deleted_at timestamptz);
-  create table public.savings_goals (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users on delete cascade, current_amount numeric default 0);
+  create table public.savings_goals (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users on delete cascade, current_amount numeric default 0,
+    note text);
+  create table public.goal_contributions (id uuid primary key default gen_random_uuid(), goal_id uuid references public.savings_goals on delete cascade,
+    user_id uuid references auth.users on delete cascade, amount numeric);
+  -- Supabase ships this publication; Migration 033 adds goal tables to it.
+  create publication supabase_realtime;
   create table public.notifications (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users on delete cascade,
     kind text, title text, body text, link text, dedupe_key text, read_at timestamptz, created_at timestamptz default now(), updated_at timestamptz default now(),
     constraint notifications_kind_chk check (kind in ('system', 'upcoming_debit')), unique (user_id, dedupe_key));
@@ -707,6 +712,20 @@ const suites = {
       if (!blocked) throw new Error('audit rows deleted')
     })
     await expectRows('flags seeded', () => db.query(`select 1 from feature_flags where key in ('feedback', 'announcements_banner')`), 2)
+  },
+  async '033_managed_goals.sql'() {
+    console.log('Migration 033 — goals managed by Northbound, realtime for goals')
+    await expectRows('savings_goals.managed_by exists', () =>
+      db.query(`select 1 from information_schema.columns where table_name = 'savings_goals' and column_name = 'managed_by'`), 1)
+    await expectRows('both goal tables in supabase_realtime (once each)', () =>
+      db.query(`select tablename from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('savings_goals', 'goal_contributions')`), 2)
+    await expectFail('managed_by rejects junk', () =>
+      db.query(`insert into savings_goals (user_id, managed_by) values ($1, 'North Bound!')`, [A]))
+    await db.query(`insert into savings_goals (user_id, note) values ($1, 'Target set by Northbound. It updates when your plan changes; your savings are never touched.'), ($1, 'my own note')`, [A])
+    await db.exec(readFileSync(join(repo, 'supabase/migrations/033_managed_goals.sql'), 'utf8'))
+    await expectRows('backfill tags only Northbound-noted goals', () =>
+      db.query(`select 1 from savings_goals where user_id = $1 and managed_by = 'northbound'`, [A]), 1)
+    await db.query(`delete from savings_goals where user_id = $1`, [A])
   },
 }
 

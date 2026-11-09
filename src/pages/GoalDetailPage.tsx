@@ -3,6 +3,7 @@ import { ArrowLeft, Loader2, Pause, Play, Sparkles, Target, Trash2, X } from 'lu
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { GoalForm } from '@/components/goals/GoalForm'
+import { ManagedGoalBadge } from '@/components/goals/ManagedGoalBadge'
 import { PauseGoalModal } from '@/components/goals/PauseGoalModal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Segmented } from '@/components/ui/Segmented'
@@ -15,7 +16,15 @@ import {
   useUpdateGoal,
 } from '@/hooks/useGoals'
 import { goalCategoryColor, goalCategoryIcon } from '@/lib/categories'
-import { deadlineLabel, parseDateOnly, remainingAmount, requiredMonthlyContribution } from '@/lib/goal-math'
+import {
+  deadlineLabel,
+  managedBy,
+  managedTargetExplainer,
+  NORTHBOUND_GOAL_NOTE_PREFIX,
+  parseDateOnly,
+  remainingAmount,
+  requiredMonthlyContribution,
+} from '@/lib/goal-math'
 import { formatCurrency } from '@/lib/utils'
 import { router } from '@/router'
 import type { GoalContribution, NewGoal } from '@/lib/types'
@@ -71,6 +80,7 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
   const monthly = requiredMonthlyContribution(goal)
   const remaining = remainingAmount(goal)
   const isAuto = goal.progress_mode === 'auto'
+  const manager = managedBy(goal)
 
   function handleSubmitAmount(e: FormEvent) {
     e.preventDefault()
@@ -186,7 +196,10 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
 
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <h1 className="page-title !text-[30px]">{goal.name}</h1>
-            {goal.note && <p className="mt-1 text-[15px] text-muted-foreground">{goal.note}</p>}
+            {/* Northbound's own note just restates the explainer below, so it's hidden. */}
+            {goal.note && !goal.note.startsWith(NORTHBOUND_GOAL_NOTE_PREFIX) && (
+              <p className="mt-1 text-[15px] text-muted-foreground">{goal.note}</p>
+            )}
             <p className="tnum mt-3 text-[17px] font-semibold">
               {formatCurrency(goal.current_amount)}{' '}
               <span className="font-medium text-muted-foreground">of {formatCurrency(goal.target_amount)}</span>
@@ -204,7 +217,9 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
                   <Sparkles size={12} strokeWidth={2.2} /> Auto-funded · weight {goal.weight}
                 </span>
               )}
+              {manager && <ManagedGoalBadge manager={manager} />}
             </div>
+            {manager && <p className="mt-2 text-[13px] text-muted-foreground">{managedTargetExplainer(manager)}</p>}
           </div>
         </div>
 
